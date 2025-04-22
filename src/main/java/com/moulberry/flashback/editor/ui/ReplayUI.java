@@ -713,6 +713,7 @@ public class ReplayUI {
 
             if (selectedEntity != null) {
                 Entity entity = Minecraft.getInstance().level.getEntities().get(selectedEntity);
+
                 if (entity == null || editorState == null) {
                     selectedEntity = null;
                 } else if (entity instanceof Player && !editorState.replayVisuals.renderPlayers) {

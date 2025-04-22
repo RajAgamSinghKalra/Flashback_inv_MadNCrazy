@@ -22,11 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class FlashbackConfig {
 
@@ -45,6 +41,7 @@ public class FlashbackConfig {
     @OptionCaption("flashback.option.quicksave")
     @OptionDescription("flashback.option.quicksave.description")
     public boolean quicksave = false;
+
 
     public boolean cjson = false;
 
@@ -302,6 +299,8 @@ public class FlashbackConfig {
     }
 
     private void save(Path path) {
+
+
         String serialized = FlashbackGson.PRETTY.toJson(this, FlashbackConfig.class);
 
         try {

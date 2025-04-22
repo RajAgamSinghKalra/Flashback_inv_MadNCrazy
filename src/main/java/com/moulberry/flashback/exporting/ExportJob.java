@@ -28,6 +28,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.FogRenderer;
@@ -40,6 +41,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.bytedeco.ffmpeg.global.avutil;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.openal.SOFTLoopback;
 
@@ -183,7 +186,8 @@ public class ExportJob {
 
             try {
                 Files.deleteIfExists(exportTempFile);
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
 
             try {
                 boolean empty;
@@ -193,15 +197,14 @@ public class ExportJob {
                 if (empty) {
                     Files.deleteIfExists(exportTempFolder);
                 }
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
 
             if (infoRenderTarget != null) {
                 infoRenderTarget.destroyBuffers();
             }
         }
     }
-
-
 
 
     private static VideoWriter createVideoWriter(ExportSettings settings, String tempFileName) {
@@ -241,9 +244,10 @@ public class ExportJob {
         double lastClientTickDouble = 0;
 
 
+        List<Map<String, Object>> allCameraKeyframes = new ArrayList<>();
+        List<Map<String, Object>> trackedData = new ArrayList<>();
 
-            List<Map<String, Object>> allCameraKeyframes = new ArrayList<>();
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         for (int tickIndex = 0; tickIndex < ticks.size(); tickIndex++) {
             TickInfo tickInfo = ticks.get(tickIndex);
@@ -251,7 +255,7 @@ public class ExportJob {
             this.currentTickDouble = tickInfo.serverTick;
             int targetServerTick = this.settings.startTick() + (int) currentTickDouble;
 
-            float deltaTicksFloat = (float)(tickInfo.clientTick - lastClientTickDouble);
+            float deltaTicksFloat = (float) (tickInfo.clientTick - lastClientTickDouble);
             lastClientTickDouble = tickInfo.clientTick;
             double partialClientTick = tickInfo.clientTick - (int) tickInfo.clientTick;
 
@@ -304,7 +308,7 @@ public class ExportJob {
             this.updateClientFreeze(frozen);
 
             KeyframeHandler keyframeHandler = new MinecraftKeyframeHandler(Minecraft.getInstance());
-            this.settings.editorState().applyKeyframes(keyframeHandler, (float)(this.settings.startTick() + currentTickDouble));
+            this.settings.editorState().applyKeyframes(keyframeHandler, (float) (this.settings.startTick() + currentTickDouble));
 
             SaveableFramebuffer saveable = downloader.take();
             RenderTarget renderTarget = Minecraft.getInstance().mainRenderTarget;
@@ -347,25 +351,81 @@ public class ExportJob {
                 audioBuffer = ByteBuffer.allocateDirect(renderSamples * 4 * channels).order(ByteOrder.nativeOrder()).asFloatBuffer();
                 SOFTLoopback.alcRenderSamplesSOFT(device, audioBuffer, renderSamples);
             }
-            if(Flashback.getConfig().cjson) {
-            Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-            if (camera != null) {
-                Map<String, Object> keyframeData = new HashMap<>();
-                keyframeData.put("tick", this.settings.startTick() + (int) currentTickDouble);
+            if (Flashback.getConfig().cjson) {
+                Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+                if (camera != null) {
+                    Map<String, Object> keyframeData = new HashMap<>();
+                    keyframeData.put("tick", tickIndex);
 
-                Vec3 positionVec3 = camera.getPosition();
-                keyframeData.put("position", new double[]{positionVec3.x, positionVec3.y, positionVec3.z});
+                    Vec3 positionVec3 = camera.getPosition();
+                    keyframeData.put("position", new double[]{positionVec3.x, positionVec3.y, positionVec3.z});
 
-                // Get rotation (yaw and pitch)
-                keyframeData.put("yaw", camera.getYRot());
-                keyframeData.put("pitch", camera.getXRot());
-                keyframeData.put("roll", 0.0); // Assuming no roll for simplicity, might need adjustment
+                    // Get rotation (yaw and pitch)
+                    keyframeData.put("yaw", camera.getYRot());
+                    keyframeData.put("pitch", camera.getXRot());
+                    keyframeData.put("roll", 0.0); // Assuming no roll for simplicity, might need adjustment
 
-                // Get FOV (might need to get it from options or game settings)
-                keyframeData.put("fov", Minecraft.getInstance().options.fov().get());
+                    // Get FOV (might need to get it from options or game settings)
+                    keyframeData.put("fov", Minecraft.getInstance().options.fov().get());
 
-                allCameraKeyframes.add(keyframeData);
-            }
+                    allCameraKeyframes.add(keyframeData);
+                }
+
+                if (!Flashback.trackedmodels.isEmpty()) {
+
+                    Map<String, Object> keyframeData = new HashMap<>();
+
+                    keyframeData.put("tick", tickIndex);
+
+                    for (Map<String, Object> currentModelMap : Flashback.trackedmodels) {
+
+                        for (Map.Entry<String, Object> entry : currentModelMap.entrySet()) {
+                            String key = entry.getKey(); // "EntityName/PartName"
+                            Object part = entry.getValue();
+
+                            String[] keyParts = key.split("/");
+                            String entityName = keyParts[0];
+                            String partName = keyParts[1];
+
+                            // Calculate the tick value
+                            Map<String, Object> partData = new HashMap<>();
+                            // Create part data
+
+                            if (part instanceof net.minecraft.world.entity.Entity) { // Replace with your actual Entity class
+                                if (partName.equals("Eyes")) {
+                                    partData.put("eyePosition", new double[]{((net.minecraft.world.entity.Entity) part).getEyePosition().x, ((net.minecraft.world.entity.Entity) part).getEyePosition().y, ((net.minecraft.world.entity.Entity) part).getEyePosition().z});
+                                    partData.put("eyeangle",new double[]{((net.minecraft.world.entity.Entity) part).getViewXRot((float) partialClientTick),((net.minecraft.world.entity.Entity) part).getViewYRot((float) partialClientTick),0});
+                                } else if (partName.equals("BlockPosition")) {
+                                    partData.put("blockPosition", new double[]{((Entity) part).getPosition((float) partialClientTick).x, ((Entity) part).getPosition((float) partialClientTick).y, ((Entity) part).getPosition((float) partialClientTick).z});
+                                    partData.put("entityrotation",new double[]{((net.minecraft.world.entity.Entity) part).getXRot(),((net.minecraft.world.entity.Entity) part).getYRot(),0});
+                                }
+                            } else {
+
+
+                                partData.put("position", new double[]{((ModelPart) part).x, ((ModelPart) part).y, ((ModelPart) part).z});
+                                partData.put("rotation", new double[]{((ModelPart) part).xRot, ((ModelPart) part).yRot, ((ModelPart) part).zRot});
+                            }
+
+
+                            // Find or create entity data
+                            Map<String, Object> entityData = null;
+                            entityData = (Map<String, Object>) keyframeData.get(entityName);
+                            if (entityData == null) {
+
+                                    entityData = new HashMap<>();
+                                    entityData.put(partName, partData);
+                                    keyframeData.put(entityName, entityData);
+
+                            } else{
+                                entityData.put(partName, partData);
+                                keyframeData.replace(entityName,entityData);
+                            }
+
+                        }
+                    }
+
+                    trackedData.add(keyframeData);
+                }
             }
 
             this.shouldChangeFramebufferSize = false;
@@ -383,14 +443,24 @@ public class ExportJob {
             }
         }
 
-        if(Flashback.getConfig().cjson) {
-        // Write camera keyframes to JSON file
-        try (FileWriter writer = new FileWriter(folder + fn)) {
-            gson.toJson(Map.of("keyframes", allCameraKeyframes), writer);
-            System.out.println("Camera keyframes exported during video export to " + (folder + fn));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }}
+        if (Flashback.getConfig().cjson) {
+            // Write camera keyframes to JSON file
+            try (FileWriter writer = new FileWriter(folder + fn)) {
+                gson.toJson(Map.of("keyframes", allCameraKeyframes), writer);
+                System.out.println("Camera keyframes exported during video export to " + (folder + fn));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (!Flashback.trackedmodels.isEmpty()) {
+
+                try (FileWriter writera = new FileWriter(folder + "ET.json")) {
+                    gson.toJson(Map.of("Entities", trackedData), writera);
+                    System.out.println("Entity Tracking keyframes exported during video export to " + (folder + "ET.json"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 
         submitDownloadedFrames(videoWriter, downloader, true);
         videoWriter.finish();
@@ -495,7 +565,8 @@ public class ExportJob {
 
         Minecraft minecraft = Minecraft.getInstance();
 
-        while (minecraft.pollTask()) {}
+        while (minecraft.pollTask()) {
+        }
         this.updateClientFreeze(frozen);
         minecraft.tick();
         this.updateSoundSource(minecraft);
@@ -544,7 +615,7 @@ public class ExportJob {
         boolean cancel = false;
 
         long currentTime = System.currentTimeMillis();
-        if (currentTime - this.lastRenderMillis > 1000/60 || currentFrame == totalFrames) {
+        if (currentTime - this.lastRenderMillis > 1000 / 60 || currentFrame == totalFrames) {
             this.progressCount = currentFrame;
             this.progressOutOf = totalFrames;
 
@@ -603,7 +674,6 @@ public class ExportJob {
             }
 
 
-
             lines.add("Exported Frames: " + currentFrame + "/" + totalFrames);
 
             long elapsed = currentTime - this.renderStartTime;
@@ -627,9 +697,9 @@ public class ExportJob {
             }
 
             if (showingDebug) {
-                lines.add("ST: " + serverTickTimeNanos/1000000 + ", CT: " + clientTickTimeNanos/1000000);
-                lines.add("RT: " + renderTimeNanos/1000000 + ", ET: " + encodeTimeNanos/1000000);
-                lines.add("DT: " + downloadTimeNanos/1000000);
+                lines.add("ST: " + serverTickTimeNanos / 1000000 + ", CT: " + clientTickTimeNanos / 1000000);
+                lines.add("RT: " + renderTimeNanos / 1000000 + ", ET: " + encodeTimeNanos / 1000000);
+                lines.add("DT: " + downloadTimeNanos / 1000000);
             } else {
                 lines.add("Press [F3] to show debug info");
             }
@@ -656,12 +726,12 @@ public class ExportJob {
             }
 
             int x = scaledWidth / 2;
-            int y = scaledHeight / 2 - font.lineHeight * (lines.size() + 1)/2;
+            int y = scaledHeight / 2 - font.lineHeight * (lines.size() + 1) / 2;
             for (String line : lines) {
                 if (line.isEmpty()) {
                     y += font.lineHeight / 2 + 1;
                 } else {
-                    font.drawInBatch(line, x - font.width(line)/2f, y,
+                    font.drawInBatch(line, x - font.width(line) / 2f, y,
                             -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
                     y += font.lineHeight;
                 }
@@ -674,9 +744,9 @@ public class ExportJob {
 
             String patreon = "https://www.patreon.com/flashbackmod";
             int patreonWidth = font.width(patreon);
-            if (mouseX > x - patreonWidth/2f && mouseX < x + patreonWidth/2f && mouseY > y && mouseY < y + font.lineHeight) {
-                font.drawInBatch(Component.literal(patreon).withStyle(ChatFormatting.UNDERLINE), x - patreonWidth/2f, y,
-                    -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            if (mouseX > x - patreonWidth / 2f && mouseX < x + patreonWidth / 2f && mouseY > y && mouseY < y + font.lineHeight) {
+                font.drawInBatch(Component.literal(patreon).withStyle(ChatFormatting.UNDERLINE), x - patreonWidth / 2f, y,
+                        -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
 
                 if (GLFW.glfwGetMouseButton(window.getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != 0) {
                     if (!this.patreonLinkClicked) {
@@ -687,8 +757,8 @@ public class ExportJob {
                     this.patreonLinkClicked = false;
                 }
             } else {
-                font.drawInBatch(patreon, x - patreonWidth/2f, y,
-                    -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+                font.drawInBatch(patreon, x - patreonWidth / 2f, y,
+                        -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
                 this.patreonLinkClicked = false;
             }
 
@@ -720,7 +790,8 @@ public class ExportJob {
         }
     }
 
-    private record TickInfo(double serverTick, double clientTick, boolean frozen) {}
+    private record TickInfo(double serverTick, double clientTick, boolean frozen) {
+    }
 
     private static List<TickInfo> calculateTicks(EditorState editorState, int startTick, int endTick, double fps) {
         List<TickInfo> ticks = new ArrayList<>();

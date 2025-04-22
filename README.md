@@ -6,13 +6,19 @@ Copyright 2024 Moulberry. Do not reupload or redistribute.
 
 Flashback is a Minecraft mod which allows you to record your Minecraft gameplay, play it back and create stunning cinematic shots.
 
-**New Feature (in this fork): CJ Exporter**
+**New Features (in this fork): CJ Exporter and Entity Tracking**
 
-This fork of Flashback includes a **CJ Exporter** feature. When you go to export your playback, you will find a new option to export a **CJ JSON** file alongside your cinematic. This JSON file contains all the camera information from your recorded playback, allowing for precise recreation of your camera movements in external tools.
+This fork of Flashback includes two new exciting features:
 
-**Blender Addon for CJ Import**
+## CJ Exporter
 
-To further enhance your cinematic workflow, there is a Blender addon available that allows you to import these CJ JSON files directly into Blender: [https://github.com/IAmMAddieAtYou/Blender-Flashback-CJ-Importer](https://github.com/IAmMAddieAtYou/Blender-Flashback-CJ-Importer). This addon streamlines the process of using your Flashback camera data for advanced rendering and post-processing in Blender.
+When you go to export your playback, you will find a new option to export a CJ JSON file alongside your cinematic. This JSON file contains all the camera information from your recorded playback, allowing for precise recreation of your camera movements in external tools.
+
+## Entity Tracking (NEW)
+A brand-new Entity Tracking functionality has been added! To use it, simply right-click on any entity in your scene, and you will find a new button called Open Track Window. Within this window, you can add various components to track, such as Head, Eyes, Hat, Arm Pos, etc. When you export your playback, as long as you have the "export Camera Json" option enabled, the mod will now correctly export the positions and rotations of these tracked entity parts into a dedicated ET JSON file.
+
+# Blender Addon for CJ and ET Import
+To further enhance your cinematic workflow, there is a Blender addon available that allows you to import both CJ JSON and ET JSON files directly into Blender:  [https://github.com/IAmMAddieAtYou/Blender-Flashback-CJ-Importer](https://github.com/IAmMAddieAtYou/Blender-Flashback-CJ-Importer). This addon streamlines the process of using your Flashback camera and entity tracking data for advanced rendering and post-processing in Blender.
 
 ## How to install
 1. Install Fabric ([https://fabricmc.net/wiki/install](https://fabricmc.net/wiki/install))

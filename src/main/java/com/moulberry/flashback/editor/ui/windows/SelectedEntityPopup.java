@@ -10,24 +10,30 @@ import com.moulberry.flashback.editor.ui.ImGuiHelper;
 import com.moulberry.flashback.exporting.AsyncFileDialogs;
 import com.moulberry.flashback.state.EditorState;
 import imgui.ImGui;
+import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImString;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
-import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
-import net.minecraft.world.scores.Team;
 
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class SelectedEntityPopup {
-
+    private static int selectedListIndex = -1;
+    private static int currentComboSelection = 0;
+    private static final String[] comboOptions = {"Eyes", "BlockPosition","head","rightArm","leftArm","body","leftLeg","rightLeg","hat"};
+    private static boolean showTrackEntityWindow = false;
     private static ImString changeSkinInput = ImGuiHelper.createResizableImString("");
     static {
         changeSkinInput.inputData.allowedChars = "0123456789abcdef-";
@@ -50,8 +56,34 @@ public class SelectedEntityPopup {
         }
     }
 
+    private static ModelPart getNamedModelPart(net.minecraft.client.model.EntityModel<?> model, String partName) {
+        Class<?> currentClass = model.getClass();
+                while (currentClass != null) {
+            try {
+                java.lang.reflect.Field field = currentClass.getDeclaredField(partName);
+                field.setAccessible(true);
+                Object part = field.get(model);
+                if (part instanceof ModelPart) {
+                    return (ModelPart) part;
+                }
+                return null; // Return null if part is not a ModelPart
+            } catch (NoSuchFieldException e) {
+                // Field not found in this class, go to the superclass
+                currentClass = currentClass.getSuperclass();
+            } catch (IllegalAccessException e) {
+                System.err.println("Could not access field: " + partName + " in model: " + model.getClass().getName());
+                e.printStackTrace();
+                return null;
+            }
+        }
+        System.err.println("Could not find ModelPart with name: " + partName + " in model hierarchy of: " + model.getClass().getName());
+        return null;
+    }
+
+
     public static void render(Entity entity, EditorState editorState) {
         UUID uuid = entity.getUUID();
+
         ImGui.text("Entity: " + uuid);
 
         ImGui.separator();
@@ -82,6 +114,74 @@ public class SelectedEntityPopup {
             }
             editorState.markDirty();
         }
+
+        if (ImGui.button("Open Track Entity")) {
+            showTrackEntityWindow = !showTrackEntityWindow;
+        }
+
+        if (showTrackEntityWindow) {
+            ImGui.begin("Track Entity", ImGuiWindowFlags.AlwaysAutoResize);
+
+            // Combo Box
+            if (ImGui.beginCombo("Track Mode", comboOptions[currentComboSelection])) {
+                for (int i = 0; i < comboOptions.length; i++) {
+                    boolean selected = currentComboSelection == i;
+                    if (ImGui.selectable(comboOptions[i], selected)) {
+                        currentComboSelection = i;
+                    }
+                    if (selected) ImGui.setItemDefaultFocus();
+                }
+                ImGui.endCombo();
+            }
+            
+            
+
+            // Add new tracked entity (temporary example)
+            if (ImGui.button("Add Player")) {
+                // Example: Add a placeholder tracked entity
+                EntityRenderer<?> renderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
+
+                if (renderer instanceof LivingEntityRenderer<?, ?> livingRenderer) {
+                    // Assuming Java
+                    Map<String, Object> newModelDict = new HashMap<String, Object>(); // Create a new dictionary
+                    if (comboOptions[currentComboSelection].toString() == "Eyes" || comboOptions[currentComboSelection].toString() == "BlockPosition") {
+                        newModelDict.put(entity.getDisplayName().getString() + "/" +  comboOptions[currentComboSelection].toString(), entity); //  May need to cast entity to ModelPart if it's not already.
+                        Flashback.trackedmodels.add(newModelDict);
+                    } else {
+                        newModelDict.put(entity.getDisplayName().getString() + "/" + comboOptions[currentComboSelection].toString(), getNamedModelPart(livingRenderer.getModel(), comboOptions[currentComboSelection].toString()));
+                        Flashback.trackedmodels.add(newModelDict);
+                    }
+                }
+
+            }
+
+            ImGui.sameLine();
+
+            if (ImGui.button("Remove Selected") && selectedListIndex >= 0 && selectedListIndex < Flashback.trackedmodels.size()) {
+                Flashback.trackedmodels.remove(selectedListIndex);
+                selectedListIndex = -1;
+            }
+
+            // List Box for tracked entities
+            if (ImGui.beginListBox("Current Tracked Entities")) {
+                for (int i = 0; i < Flashback.trackedmodels.size(); i++) {
+                    Map<String, Object> currentMap = Flashback.trackedmodels.get(i);
+                    // Get the first key (assuming there's only one key-value pair per map)
+                    String fullKey = currentMap.keySet().iterator().next();
+
+                    boolean isSelected = selectedListIndex == i;
+                    if (ImGui.selectable(fullKey, isSelected)) { // Use partName for display
+                        selectedListIndex = i;
+                    }
+                }
+                ImGui.endListBox();
+            }
+
+            ImGui.end();
+        }
+
+        
+
 
         if (!isHiddenDuringExport) {
             if (entity instanceof Player player) {
