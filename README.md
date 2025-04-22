@@ -16,6 +16,7 @@ When you go to export your playback, you will find a new option to export a CJ J
 
 ## Entity Tracking (NEW)
 ![Showing how to open up the new Entity Tracking window](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExazFkODdrbmtvZG9wMHBscjBkamJ3dWNvN3lsYTN5d21kZnEwY2l6MCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/MXM9mN11EoFdd9C2bJ/giphy.gif)
+
 A brand-new Entity Tracking functionality has been added! To use it, simply right-click on any entity in your scene, and you will find a new button called Open Track Window. Within this window, you can add various components to track, such as Head, Eyes, Hat, Arm Pos, etc. When you export your playback, as long as you have the "export Camera Json" option enabled, the mod will now correctly export the positions and rotations of these tracked entity parts into a dedicated ET JSON file.
 
 # Blender Addon for CJ and ET Import
