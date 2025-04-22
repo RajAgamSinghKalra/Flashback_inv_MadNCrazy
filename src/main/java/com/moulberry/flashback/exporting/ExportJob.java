@@ -393,7 +393,7 @@ public class ExportJob {
 
                             if (part instanceof net.minecraft.world.entity.Entity) { // Replace with your actual Entity class
                                 if (partName.equals("Eyes")) {
-                                    partData.put("eyePosition", new double[]{((net.minecraft.world.entity.Entity) part).getEyePosition().x, ((net.minecraft.world.entity.Entity) part).getEyePosition().y, ((net.minecraft.world.entity.Entity) part).getEyePosition().z});
+                                    partData.put("eyePosition", new double[]{((Entity) part).getPosition((float) partialClientTick).x, ((Entity) part).getPosition((float) partialClientTick).y + ((Entity) part).getEyeHeight(), ((Entity) part).getPosition((float) partialClientTick).z});
                                     partData.put("eyeangle",new double[]{((net.minecraft.world.entity.Entity) part).getViewXRot((float) partialClientTick),((net.minecraft.world.entity.Entity) part).getViewYRot((float) partialClientTick),0});
                                 } else if (partName.equals("BlockPosition")) {
                                     partData.put("blockPosition", new double[]{((Entity) part).getPosition((float) partialClientTick).x, ((Entity) part).getPosition((float) partialClientTick).y, ((Entity) part).getPosition((float) partialClientTick).z});
