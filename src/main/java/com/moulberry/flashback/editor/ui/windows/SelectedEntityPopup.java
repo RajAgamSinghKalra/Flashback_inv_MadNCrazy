@@ -56,29 +56,7 @@ public class SelectedEntityPopup {
         }
     }
 
-    private static ModelPart getNamedModelPart(net.minecraft.client.model.EntityModel<?> model, String partName) {
-        Class<?> currentClass = model.getClass();
-                while (currentClass != null) {
-            try {
-                java.lang.reflect.Field field = currentClass.getDeclaredField(partName);
-                field.setAccessible(true);
-                Object part = field.get(model);
-                if (part instanceof ModelPart) {
-                    return (ModelPart) part;
-                }
-                return null; // Return null if part is not a ModelPart
-            } catch (NoSuchFieldException e) {
-                // Field not found in this class, go to the superclass
-                currentClass = currentClass.getSuperclass();
-            } catch (IllegalAccessException e) {
-                System.err.println("Could not access field: " + partName + " in model: " + model.getClass().getName());
-                e.printStackTrace();
-                return null;
-            }
-        }
-        System.err.println("Could not find ModelPart with name: " + partName + " in model hierarchy of: " + model.getClass().getName());
-        return null;
-    }
+
 
 
     public static void render(Entity entity, EditorState editorState) {
@@ -139,19 +117,18 @@ public class SelectedEntityPopup {
             // Add new tracked entity (temporary example)
             if (ImGui.button("Add Player")) {
                 // Example: Add a placeholder tracked entity
-                EntityRenderer<?> renderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
 
-                if (renderer instanceof LivingEntityRenderer<?, ?> livingRenderer) {
+
                     // Assuming Java
                     Map<String, Object> newModelDict = new HashMap<String, Object>(); // Create a new dictionary
                     if (comboOptions[currentComboSelection].toString() == "Eyes" || comboOptions[currentComboSelection].toString() == "BlockPosition") {
-                        newModelDict.put(entity.getDisplayName().getString() + "/" +  comboOptions[currentComboSelection].toString(), entity); //  May need to cast entity to ModelPart if it's not already.
+                        newModelDict.put(entity.getUUID().toString() + "/" +  comboOptions[currentComboSelection].toString(), comboOptions[currentComboSelection].toString()); //  May need to cast entity to ModelPart if it's not already.
                         Flashback.trackedmodels.add(newModelDict);
                     } else {
-                        newModelDict.put(entity.getDisplayName().getString() + "/" + comboOptions[currentComboSelection].toString(), getNamedModelPart(livingRenderer.getModel(), comboOptions[currentComboSelection].toString()));
+                        newModelDict.put(entity.getUUID().toString() + "/" + comboOptions[currentComboSelection].toString(),  comboOptions[currentComboSelection].toString());
                         Flashback.trackedmodels.add(newModelDict);
                     }
-                }
+
 
             }
 

@@ -33,8 +33,11 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.FogRenderer;
 import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -57,6 +60,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
+
+import static net.minecraft.commands.arguments.EntityArgument.getEntity;
 
 public class ExportJob {
 
@@ -215,6 +220,32 @@ public class ExportJob {
         }
     }
 
+
+    private static ModelPart getNamedModelPart(net.minecraft.client.model.EntityModel<?> model, String partName) {
+        Class<?> currentClass = model.getClass();
+        while (currentClass != null) {
+            try {
+                java.lang.reflect.Field field = currentClass.getDeclaredField(partName);
+                field.setAccessible(true);
+                Object part = field.get(model);
+                if (part instanceof ModelPart) {
+
+                    return (ModelPart) part;
+                }
+                return null; // Return null if part is not a ModelPart
+            } catch (NoSuchFieldException e) {
+                // Field not found in this class, go to the superclass
+                currentClass = currentClass.getSuperclass();
+            } catch (IllegalAccessException e) {
+                System.err.println("Could not access field: " + partName + " in model: " + model.getClass().getName());
+                e.printStackTrace();
+                return null;
+            }
+        }
+        System.err.println("Could not find ModelPart with name: " + partName + " in model hierarchy of: " + model.getClass().getName());
+        return null;
+    }
+
     private void doExport(VideoWriter videoWriter, SaveableFramebufferQueue downloader, TextureTarget infoRenderTarget, Path folder, String fn) {
         ReplayServer replayServer = Flashback.getReplayServer();
         if (replayServer == null) {
@@ -309,7 +340,7 @@ public class ExportJob {
 
             KeyframeHandler keyframeHandler = new MinecraftKeyframeHandler(Minecraft.getInstance());
             this.settings.editorState().applyKeyframes(keyframeHandler, (float) (this.settings.startTick() + currentTickDouble));
-
+            
             SaveableFramebuffer saveable = downloader.take();
             RenderTarget renderTarget = Minecraft.getInstance().mainRenderTarget;
 
@@ -366,7 +397,8 @@ public class ExportJob {
                     keyframeData.put("roll", 0.0); // Assuming no roll for simplicity, might need adjustment
 
                     // Get FOV (might need to get it from options or game settings)
-                    keyframeData.put("fov", Minecraft.getInstance().options.fov().get());
+
+                    keyframeData.put("fov", Minecraft.getInstance().options.fov().get().doubleValue());
 
                     allCameraKeyframes.add(keyframeData);
                 }
@@ -381,7 +413,6 @@ public class ExportJob {
 
                         for (Map.Entry<String, Object> entry : currentModelMap.entrySet()) {
                             String key = entry.getKey(); // "EntityName/PartName"
-                            Object part = entry.getValue();
 
                             String[] keyParts = key.split("/");
                             String entityName = keyParts[0];
@@ -389,23 +420,35 @@ public class ExportJob {
 
                             // Calculate the tick value
                             Map<String, Object> partData = new HashMap<>();
-                            // Create part data
 
-                            if (part instanceof net.minecraft.world.entity.Entity) { // Replace with your actual Entity class
+                            assert Minecraft.getInstance().level != null;
+                            Entity entity =  Minecraft.getInstance().level.getEntities().get(UUID.fromString(entityName));
+
+                            if(entity != null) {
+                                // Create part data
+                                EntityRenderer<?> renderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
+
                                 if (partName.equals("Eyes")) {
-                                    partData.put("eyePosition", new double[]{((Entity) part).getPosition((float) partialClientTick).x, ((Entity) part).getPosition((float) partialClientTick).y + ((Entity) part).getEyeHeight(), ((Entity) part).getPosition((float) partialClientTick).z});
-                                    partData.put("eyeangle",new double[]{((net.minecraft.world.entity.Entity) part).getViewXRot((float) partialClientTick),((net.minecraft.world.entity.Entity) part).getViewYRot((float) partialClientTick),0});
+                                    float tick = (float) (partialClientTick + 0.001);
+                                    if (tick < 0.0f) {
+                                        tick = 0.0f;
+                                    } else if (tick > 1.0f) {
+                                        tick = 1.0f;
+                                    }
+
+                                    partData.put("eyePosition", new double[]{((Entity) entity).getPosition((float) tick).x, ((Entity) entity).getPosition((float) tick).y + ((Entity) entity).getEyeHeight(), ((Entity) entity).getPosition((float) tick).z});
+                                    partData.put("eyeangle", new double[]{((net.minecraft.world.entity.Entity) entity).getViewXRot((float) partialClientTick), ((net.minecraft.world.entity.Entity) entity).getViewYRot((float) partialClientTick), 0});
                                 } else if (partName.equals("BlockPosition")) {
-                                    partData.put("blockPosition", new double[]{((Entity) part).getPosition((float) partialClientTick).x, ((Entity) part).getPosition((float) partialClientTick).y, ((Entity) part).getPosition((float) partialClientTick).z});
-                                    partData.put("entityrotation",new double[]{((net.minecraft.world.entity.Entity) part).getXRot(),((net.minecraft.world.entity.Entity) part).getYRot(),0});
+                                    partData.put("blockPosition", new double[]{((Entity) entity).getPosition((float) partialClientTick).x, ((Entity) entity).getPosition((float) partialClientTick).y, ((Entity) entity).getPosition((float) partialClientTick).z});
+                                    partData.put("entityrotation", new double[]{((net.minecraft.world.entity.Entity) entity).getXRot(), ((net.minecraft.world.entity.Entity) entity).getYRot(), 0});
+                                } else {
+                                    if (renderer instanceof LivingEntityRenderer<?, ?> livingRenderer) {
+                                        ModelPart part = getNamedModelPart(livingRenderer.getModel(), partName);
+                                        partData.put("position", new double[]{((ModelPart) part).x, ((ModelPart) part).y, ((ModelPart) part).z});
+                                        partData.put("rotation", new double[]{((ModelPart) part).xRot, ((ModelPart) part).yRot, ((ModelPart) part).zRot});
+                                    }
                                 }
-                            } else {
-
-
-                                partData.put("position", new double[]{((ModelPart) part).x, ((ModelPart) part).y, ((ModelPart) part).z});
-                                partData.put("rotation", new double[]{((ModelPart) part).xRot, ((ModelPart) part).yRot, ((ModelPart) part).zRot});
                             }
-
 
                             // Find or create entity data
                             Map<String, Object> entityData = null;
