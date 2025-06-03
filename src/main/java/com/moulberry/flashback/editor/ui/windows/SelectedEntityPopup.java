@@ -23,6 +23,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
 
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,6 +50,7 @@ public class SelectedEntityPopup {
         } else {
             changeNameInput.set("");
         }
+        Flashback.lastselectede = entity.getUUID();
 
         GameProfile skinOverride = editorState.skinOverride.get(entity.getUUID());
         if (skinOverride != null) {
@@ -96,6 +100,7 @@ public class SelectedEntityPopup {
         if (ImGui.button("Open Track Entity")) {
             showTrackEntityWindow = !showTrackEntityWindow;
         }
+
 
         if (showTrackEntityWindow) {
             ImGui.begin("Track Entity", ImGuiWindowFlags.AlwaysAutoResize);

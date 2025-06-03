@@ -6,7 +6,7 @@ Copyright 2024 Moulberry. Do not reupload or redistribute.
 
 Flashback is a Minecraft mod which allows you to record your Minecraft gameplay, play it back and create stunning cinematic shots.
 
-**New Features (in this fork): CJ Exporter and Entity Tracking**
+**New Features (in this fork): CJ Exporter, Entity Tracking and Skin Keyframe Type**
 
 This fork of Flashback includes two new exciting features:
 
@@ -14,10 +14,15 @@ This fork of Flashback includes two new exciting features:
 
 When you go to export your playback, you will find a new option to export a CJ JSON file alongside your cinematic. This JSON file contains all the camera information from your recorded playback, allowing for precise recreation of your camera movements in external tools.
 
-## Entity Tracking (NEW)
+## Entity Tracking
 ![Showing how to open up the new Entity Tracking window](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExazFkODdrbmtvZG9wMHBscjBkamJ3dWNvN3lsYTN5d21kZnEwY2l6MCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/MXM9mN11EoFdd9C2bJ/giphy.gif)
 
-A brand-new Entity Tracking functionality has been added! To use it, simply right-click on any entity in your scene, and you will find a new button called Open Track Window. Within this window, you can add various components to track, such as Head, Eyes, Hat, Arm Pos, etc. When you export your playback, as long as you have the "export Camera Json" option enabled, the mod will now correctly export the positions and rotations of these tracked entity parts into a dedicated ET JSON file.
+To use it, simply right-click on any entity in your scene, and you will find a new button called Open Track Window. Within this window, you can add various components to track, such as Head, Eyes, Hat, Arm Pos, etc. When you export your playback, as long as you have the "export Camera Json" option enabled, the mod will now correctly export the positions and rotations of these tracked entity parts into a dedicated ET JSON file.
+
+## Skin Changes by Keyframes (NEW)
+![Showing the result of Skin Changes](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExd29paW5hZTYwcnhuZG04MHFvNjFua2E4N3BycjFqZ3RmZGZleWhtbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ewydIoN2Hq5TksC8lh/giphy.gif)
+
+A new feature has been added! This feature includes a new KeyframeType called Skin. To use it first right click on the entity you want to change the skin of AND THEN create the keyframe! At the moment since this is an older version there's no way to get the UUID without doing this. Happy Filming! ( :
 
 # Blender Addon for CJ and ET Import
 To further enhance your cinematic workflow, there is a Blender addon available that allows you to import both CJ JSON and ET JSON files directly into Blender:  [https://github.com/IAmMAddieAtYou/Blender-Flashback-CJ-Importer](https://github.com/IAmMAddieAtYou/Blender-Flashback-CJ-Importer). This addon streamlines the process of using your Flashback camera and entity tracking data for advanced rendering and post-processing in Blender.

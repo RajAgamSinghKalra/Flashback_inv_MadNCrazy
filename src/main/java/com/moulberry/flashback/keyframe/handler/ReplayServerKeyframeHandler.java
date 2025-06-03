@@ -1,5 +1,7 @@
 package com.moulberry.flashback.keyframe.handler;
 
+import com.moulberry.flashback.FilePlayerSkin;
+import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.keyframe.KeyframeType;
 import com.moulberry.flashback.keyframe.change.KeyframeChange;
 import com.moulberry.flashback.keyframe.change.KeyframeChangeFreeze;
@@ -8,9 +10,14 @@ import com.moulberry.flashback.keyframe.types.FreezeKeyframeType;
 import com.moulberry.flashback.keyframe.types.SpeedKeyframeType;
 import com.moulberry.flashback.keyframe.types.TimelapseKeyframeType;
 import com.moulberry.flashback.playback.ReplayServer;
+import com.moulberry.flashback.state.EditorState;
+import com.moulberry.flashback.state.EditorStateManager;
+import net.minecraft.client.Minecraft;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public record ReplayServerKeyframeHandler(ReplayServer replayServer) implements KeyframeHandler {
 
@@ -27,6 +34,8 @@ public record ReplayServerKeyframeHandler(ReplayServer replayServer) implements 
     public boolean alwaysApplyLastKeyframe() {
         return true;
     }
+
+
 
     @Override
     public void applyFov(float fov) {

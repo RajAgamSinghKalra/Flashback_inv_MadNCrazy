@@ -4,14 +4,7 @@ import com.google.gson.*;
 import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.keyframe.change.KeyframeChange;
 import com.moulberry.flashback.keyframe.handler.KeyframeHandler;
-import com.moulberry.flashback.keyframe.impl.CameraKeyframe;
-import com.moulberry.flashback.keyframe.impl.CameraOrbitKeyframe;
-import com.moulberry.flashback.keyframe.impl.CameraShakeKeyframe;
-import com.moulberry.flashback.keyframe.impl.FOVKeyframe;
-import com.moulberry.flashback.keyframe.impl.FreezeKeyframe;
-import com.moulberry.flashback.keyframe.impl.TickrateKeyframe;
-import com.moulberry.flashback.keyframe.impl.TimeOfDayKeyframe;
-import com.moulberry.flashback.keyframe.impl.TimelapseKeyframe;
+import com.moulberry.flashback.keyframe.impl.*;
 import com.moulberry.flashback.keyframe.interpolation.InterpolationType;
 
 import java.lang.reflect.Type;
@@ -58,6 +51,7 @@ public abstract class Keyframe {
                 case "timelapse" -> context.deserialize(json, TimelapseKeyframe.class);
                 case "time" -> context.deserialize(json, TimeOfDayKeyframe.class);
                 case "camera_shake" -> context.deserialize(json, CameraShakeKeyframe.class);
+                case "skin" -> context.deserialize(json,SkinKeyframe.class);
                 default -> throw new IllegalStateException("Unknown keyframe type: " + type);
             };
             keyframe.interpolationType(context.deserialize(jsonObject.get("interpolation_type"), InterpolationType.class));
@@ -95,6 +89,10 @@ public abstract class Keyframe {
                 case CameraShakeKeyframe cameraShakeKeyframe -> {
                     jsonObject = (JsonObject) context.serialize(cameraShakeKeyframe);
                     jsonObject.addProperty("type", "camera_shake");
+                }
+                case SkinKeyframe skinKeyframe -> {
+                    jsonObject = (JsonObject) context.serialize(skinKeyframe);
+                    jsonObject.addProperty("type","skin");
                 }
                 default -> throw new IllegalStateException("Unknown keyframe type: " + src.getClass());
             }
