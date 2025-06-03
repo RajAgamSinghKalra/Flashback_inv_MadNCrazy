@@ -8,7 +8,7 @@ Flashback is a Minecraft mod which allows you to record your Minecraft gameplay,
 
 **New Features (in this fork): CJ Exporter, Entity Tracking and Skin Keyframe Type**
 
-This fork of Flashback includes two new exciting features:
+This fork of Flashback includes three new exciting features:
 
 ## CJ Exporter
 
