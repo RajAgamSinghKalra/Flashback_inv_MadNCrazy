@@ -14,21 +14,7 @@ import com.moulberry.flashback.keyframe.KeyframeRegistry;
 
 import com.moulberry.flashback.keyframe.KeyframeType;
 
-import com.moulberry.flashback.keyframe.impl.CameraKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.CameraOrbitKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.CameraShakeKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.FOVKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.FreezeKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.TickrateKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.TimeOfDayKeyframe;
-
-import com.moulberry.flashback.keyframe.impl.TimelapseKeyframe;
+import com.moulberry.flashback.keyframe.impl.*;
 
 import com.moulberry.flashback.serialization.QuaterniondTypeAdapater;
 
@@ -94,7 +80,11 @@ public class FlashbackGson {
 
                 .registerTypeAdapter(FreezeKeyframe.class, new FreezeKeyframe.TypeAdapter())
 
+                .registerTypeAdapter(SkinKeyframe.class,new SkinKeyframe.TypeAdapter())
+
                 .registerTypeAdapter(Keyframe.class, new Keyframe.TypeAdapter())
+
+
 
 
 

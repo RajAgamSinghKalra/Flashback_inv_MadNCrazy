@@ -1,5 +1,7 @@
 package com.moulberry.flashback.keyframe.handler;
 
+import com.moulberry.flashback.FilePlayerSkin;
+import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.keyframe.change.*;
 import com.moulberry.flashback.state.EditorState;
 import com.moulberry.flashback.state.EditorStateManager;
@@ -9,16 +11,55 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public record MinecraftKeyframeHandler(Minecraft minecraft) implements KeyframeHandler {
 
     private static final Set<Class<? extends KeyframeChange>> supportedChanges = Set.of(
-            KeyframeChangeCameraPosition.class, KeyframeChangeFov.class, KeyframeChangeTimeOfDay.class, KeyframeChangeCameraShake.class
+            KeyframeChangeCameraPosition.class, KeyframeChangeFov.class, KeyframeChangeTimeOfDay.class, KeyframeChangeCameraShake.class,KeyframeChangePlayerSkin.class
     );
 
     @Override
     public boolean supportsKeyframeChange(Class<? extends KeyframeChange> clazz) {
         return supportedChanges.contains(clazz);
+    }
+
+    @Override
+    public void applyPlayerSkin(UUID entityid, String skinIdentifier, boolean isUuidSkin) {
+        EditorState editorState = EditorStateManager.getCurrent();
+        if (editorState == null) {
+
+            return;
+        }
+
+        if(entityid != null){
+
+
+
+        // Reset any existing skin override for this entity first
+        editorState.skinOverride.remove(entityid);
+        editorState.skinOverrideFromFile.remove(entityid);
+
+
+        if (isUuidSkin) {
+
+            try {
+                UUID skinUuid = UUID.fromString(skinIdentifier);
+                CompletableFuture.supplyAsync(() -> Minecraft.getInstance().getMinecraftSessionService().fetchProfile(skinUuid, true))
+                        .thenAccept(profileResult -> {
+                            if (profileResult != null) {
+                                editorState.skinOverride.put(entityid, profileResult.profile());
+                            }
+                        });
+            } catch (IllegalArgumentException e) {
+                System.err.println("Flashback: Invalid UUID for skin keyframe: " + skinIdentifier);
+            }
+        } else {
+            // Assume skinIdentifier is a file path
+
+            editorState.skinOverrideFromFile.put(entityid, new FilePlayerSkin(skinIdentifier));
+        }}
     }
 
     @Override

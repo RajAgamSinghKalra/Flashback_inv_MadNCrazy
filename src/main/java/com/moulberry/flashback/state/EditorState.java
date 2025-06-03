@@ -150,14 +150,13 @@ public class EditorState {
             if (applied.contains(keyframeChangeType)) {
                 continue;
             }
-
             if (!keyframeTrack.keyframeType.supportsHandler(keyframeHandler)) {
                 continue;
             }
 
             // Try to apply keyframes, mark applied if successful
-
             KeyframeChange change = keyframeTrack.createKeyframeChange(tick);
+
             if (change == null) {
                 if (keyframeHandler.alwaysApplyLastKeyframe() && !keyframeTrack.keyframesByTick.isEmpty()) {
                     KeyframeTrack oldTrack = maybeApplyLastTick.get(keyframeChangeType);
@@ -167,7 +166,6 @@ public class EditorState {
                 }
                 continue;
             }
-
             if (change.getClass() != keyframeChangeType) {
                 throw new IllegalStateException("Expected " + keyframeChangeType + ", got " + change.getClass() + ". Caused by: " + keyframeTrack.keyframeType.id());
             }

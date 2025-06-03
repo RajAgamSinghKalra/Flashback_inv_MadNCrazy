@@ -17,14 +17,7 @@ import com.moulberry.flashback.exporting.ExportJob;
 import com.moulberry.flashback.exporting.taskbar.TaskbarManager;
 import com.moulberry.flashback.ext.MinecraftExt;
 import com.moulberry.flashback.keyframe.KeyframeRegistry;
-import com.moulberry.flashback.keyframe.types.CameraKeyframeType;
-import com.moulberry.flashback.keyframe.types.CameraOrbitKeyframeType;
-import com.moulberry.flashback.keyframe.types.CameraShakeKeyframeType;
-import com.moulberry.flashback.keyframe.types.FOVKeyframeType;
-import com.moulberry.flashback.keyframe.types.FreezeKeyframeType;
-import com.moulberry.flashback.keyframe.types.SpeedKeyframeType;
-import com.moulberry.flashback.keyframe.types.TimeOfDayKeyframeType;
-import com.moulberry.flashback.keyframe.types.TimelapseKeyframeType;
+import com.moulberry.flashback.keyframe.types.*;
 import com.moulberry.flashback.packet.FlashbackAccurateEntityPosition;
 import com.moulberry.flashback.packet.FlashbackClearEntities;
 import com.moulberry.flashback.packet.FlashbackClearParticles;
@@ -137,7 +130,7 @@ public class Flashback implements ModInitializer, ClientModInitializer {
     private static boolean delayedOpenConfig = false;
     private static volatile boolean isInReplay = false;
     public static List<Map<String, Object>> trackedmodels = new ArrayList<Map<String, Object>>();
-
+    public static UUID lastselectede;
     public static boolean supportsDistantHorizons = false;
 
     private static final List<Path> pendingReplaySave = new ArrayList<>();
@@ -245,6 +238,7 @@ public class Flashback implements ModInitializer, ClientModInitializer {
         KeyframeRegistry.register(TimelapseKeyframeType.INSTANCE);
         KeyframeRegistry.register(TimeOfDayKeyframeType.INSTANCE);
         KeyframeRegistry.register(FreezeKeyframeType.INSTANCE);
+        KeyframeRegistry.register(SkinKeyframeType.INSTANCE);
 
         ClientPlayNetworking.registerGlobalReceiver(FlashbackForceClientTick.TYPE, (payload, context) -> {
             if (Flashback.isInReplay()) {

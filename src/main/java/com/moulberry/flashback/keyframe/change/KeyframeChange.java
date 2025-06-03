@@ -7,4 +7,5 @@ public interface KeyframeChange {
     void apply(KeyframeHandler keyframeHandler);
     KeyframeChange interpolate(KeyframeChange to, double amount);
 
+
 }
