@@ -62,10 +62,9 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-	include(implementation("com.moulberry:mixinconstraints:1.0.7"))
+	include(implementation("com.moulberry:mixinconstraints:1.0.8"))
 
-    modCompileOnly(rootProject.files('deps/DistantHorizons-2.3.0-b-RC3-1.21.4-neoforge-fabric.jar'))
-
+    modCompileOnly("maven.modrinth:distanthorizons:Mt9bDAs6")
     modCompileOnly("maven.modrinth:sodium:RncWhTxD")
     modCompileOnly("maven.modrinth:iris:kuOV4Ece")
     modCompileOnly("maven.modrinth:bobby:2cuVyTav")

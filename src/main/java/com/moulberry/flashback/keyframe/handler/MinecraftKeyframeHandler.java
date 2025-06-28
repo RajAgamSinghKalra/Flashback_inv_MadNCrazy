@@ -1,7 +1,6 @@
 package com.moulberry.flashback.keyframe.handler;
 
 import com.moulberry.flashback.FilePlayerSkin;
-import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.keyframe.change.*;
 import com.moulberry.flashback.state.EditorState;
 import com.moulberry.flashback.state.EditorStateManager;
@@ -17,8 +16,14 @@ import java.util.concurrent.CompletableFuture;
 public record MinecraftKeyframeHandler(Minecraft minecraft) implements KeyframeHandler {
 
     private static final Set<Class<? extends KeyframeChange>> supportedChanges = Set.of(
-            KeyframeChangeCameraPosition.class, KeyframeChangeFov.class, KeyframeChangeTimeOfDay.class, KeyframeChangeCameraShake.class,KeyframeChangePlayerSkin.class
+            KeyframeChangeCameraPosition.class, KeyframeChangeCameraPositionOrbit.class, KeyframeChangeTrackEntity.class,
+            KeyframeChangeFov.class, KeyframeChangeTimeOfDay.class, KeyframeChangeCameraShake.class
     );
+
+    @Override
+    public Minecraft getMinecraft() {
+        return this.minecraft;
+    }
 
     @Override
     public boolean supportsKeyframeChange(Class<? extends KeyframeChange> clazz) {
@@ -37,29 +42,29 @@ public record MinecraftKeyframeHandler(Minecraft minecraft) implements KeyframeH
 
 
 
-        // Reset any existing skin override for this entity first
-        editorState.skinOverride.remove(entityid);
-        editorState.skinOverrideFromFile.remove(entityid);
+            // Reset any existing skin override for this entity first
+            editorState.skinOverride.remove(entityid);
+            editorState.skinOverrideFromFile.remove(entityid);
 
 
-        if (isUuidSkin) {
+            if (isUuidSkin) {
 
-            try {
-                UUID skinUuid = UUID.fromString(skinIdentifier);
-                CompletableFuture.supplyAsync(() -> Minecraft.getInstance().getMinecraftSessionService().fetchProfile(skinUuid, true))
-                        .thenAccept(profileResult -> {
-                            if (profileResult != null) {
-                                editorState.skinOverride.put(entityid, profileResult.profile());
-                            }
-                        });
-            } catch (IllegalArgumentException e) {
-                System.err.println("Flashback: Invalid UUID for skin keyframe: " + skinIdentifier);
-            }
-        } else {
-            // Assume skinIdentifier is a file path
+                try {
+                    UUID skinUuid = UUID.fromString(skinIdentifier);
+                    CompletableFuture.supplyAsync(() -> Minecraft.getInstance().getMinecraftSessionService().fetchProfile(skinUuid, true))
+                            .thenAccept(profileResult -> {
+                                if (profileResult != null) {
+                                    editorState.skinOverride.put(entityid, profileResult.profile());
+                                }
+                            });
+                } catch (IllegalArgumentException e) {
+                    System.err.println("Flashback: Invalid UUID for skin keyframe: " + skinIdentifier);
+                }
+            } else {
+                // Assume skinIdentifier is a file path
 
-            editorState.skinOverrideFromFile.put(entityid, new FilePlayerSkin(skinIdentifier));
-        }}
+                editorState.skinOverrideFromFile.put(entityid, new FilePlayerSkin(skinIdentifier));
+            }}
     }
 
     @Override
@@ -97,11 +102,6 @@ public record MinecraftKeyframeHandler(Minecraft minecraft) implements KeyframeH
 
     @Override
     public void applyTimeOfDay(int timeOfDay) {
-        timeOfDay = timeOfDay % 24000;
-        if (timeOfDay < 0) {
-            timeOfDay += 24000;
-        }
-
         EditorState editorState = EditorStateManager.getCurrent();
         if (editorState != null) {
             editorState.replayVisuals.overrideTimeOfDay = timeOfDay;

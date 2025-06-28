@@ -121,8 +121,10 @@ public class SkinKeyframe extends Keyframe {
         return new KeyframeChangePlayerSkin(this.entityUuid, this.skinIdentifier, this.isUuidSkin);
     }
 
+
+
     @Override
-    public KeyframeChange createHermiteInterpolatedChange(Map<Integer, Keyframe> keyframes, float amount) {
+    public KeyframeChange createHermiteInterpolatedChange(Map<Float, Keyframe> keyframes, float tick) {
         // Skin changes are discrete and not interpolated.
         return new KeyframeChangePlayerSkin(this.entityUuid, this.skinIdentifier, this.isUuidSkin);
     }

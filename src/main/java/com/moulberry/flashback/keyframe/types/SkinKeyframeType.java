@@ -42,7 +42,7 @@ public class SkinKeyframeType implements KeyframeType<SkinKeyframe> {
     @Override
     public @Nullable SkinKeyframe createDirect() {
 
-        return new SkinKeyframe(Flashback.lastselectede, "", false);
+        return new SkinKeyframe(UUID.randomUUID(), "", false);
     }
 
     @Override

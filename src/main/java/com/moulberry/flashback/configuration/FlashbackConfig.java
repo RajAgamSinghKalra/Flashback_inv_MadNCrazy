@@ -22,7 +22,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public class FlashbackConfig {
 
@@ -41,6 +45,7 @@ public class FlashbackConfig {
     @OptionCaption("flashback.option.quicksave")
     @OptionDescription("flashback.option.quicksave.description")
     public boolean quicksave = false;
+
 
 
     public boolean cjson = false;
@@ -81,9 +86,11 @@ public class FlashbackConfig {
     public List<String> recentReplays = new ArrayList<>();
     public String defaultExportFilename = "%date%T%time%";
     public InterpolationType defaultInterpolationType = InterpolationType.SMOOTH;
+    public boolean useRealtimeInterpolation = true;
 
     public boolean disableIncreasedFirstPersonUpdates = false;
     public boolean disableThirdPersonCancel = false;
+    public int[] exportRenderDummyFrames = new int[]{0};
 
     public ReplaySorting replaySorting = ReplaySorting.CREATED_DATE;
     public boolean sortDescending = true;
@@ -107,12 +114,16 @@ public class FlashbackConfig {
     public String defaultExportPath = null;
 
     public float defaultOverrideFov = 70.0f;
+    public boolean enableOverrideFovByDefault = false;
 
     public ForceDefaultExportSettings forceDefaultExportSettings = new ForceDefaultExportSettings();
 
     public boolean filterUnnecessaryPackets = true;
 
     public boolean signedRenderFilter = false;
+    public int viewedTipsOfTheDay = 0;
+    public boolean showTipOfTheDay = true;
+    public long nextTipOfTheDay = 0;
 
     private transient int saveDelay = 0;
 
@@ -299,8 +310,6 @@ public class FlashbackConfig {
     }
 
     private void save(Path path) {
-
-
         String serialized = FlashbackGson.PRETTY.toJson(this, FlashbackConfig.class);
 
         try {

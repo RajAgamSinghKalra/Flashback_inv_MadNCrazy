@@ -1,11 +1,10 @@
 package com.moulberry.flashback.keyframe;
 
 import com.google.gson.*;
-import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.keyframe.change.KeyframeChange;
-import com.moulberry.flashback.keyframe.handler.KeyframeHandler;
 import com.moulberry.flashback.keyframe.impl.*;
 import com.moulberry.flashback.keyframe.interpolation.InterpolationType;
+import com.moulberry.flashback.state.RealTimeMapping;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -28,7 +27,7 @@ public abstract class Keyframe {
     public abstract Keyframe copy();
     public abstract KeyframeChange createChange();
     public abstract KeyframeChange createSmoothInterpolatedChange(Keyframe p1, Keyframe p2, Keyframe p3, float t0, float t1, float t2, float t3, float amount);
-    public abstract KeyframeChange createHermiteInterpolatedChange(Map<Integer, Keyframe> keyframes, float amount);
+    public abstract KeyframeChange createHermiteInterpolatedChange(Map<Float, Keyframe> keyframes, float tick);
 
     public void renderEditKeyframe(Consumer<Consumer<Keyframe>> update) {}
 
@@ -45,12 +44,14 @@ public abstract class Keyframe {
             Keyframe keyframe = switch (type) {
                 case "camera" -> context.deserialize(json, CameraKeyframe.class);
                 case "camera_orbit" -> context.deserialize(json, CameraOrbitKeyframe.class);
+                case "track_entity" -> context.deserialize(json, TrackEntityKeyframe.class);
                 case "fov" -> context.deserialize(json, FOVKeyframe.class);
                 case "tickrate" -> context.deserialize(json, TickrateKeyframe.class);
                 case "freeze" -> context.deserialize(json, FreezeKeyframe.class);
                 case "timelapse" -> context.deserialize(json, TimelapseKeyframe.class);
                 case "time" -> context.deserialize(json, TimeOfDayKeyframe.class);
                 case "camera_shake" -> context.deserialize(json, CameraShakeKeyframe.class);
+                case "block_override" -> context.deserialize(json, BlockOverrideKeyframe.class);
                 case "skin" -> context.deserialize(json,SkinKeyframe.class);
                 default -> throw new IllegalStateException("Unknown keyframe type: " + type);
             };
@@ -89,6 +90,10 @@ public abstract class Keyframe {
                 case CameraShakeKeyframe cameraShakeKeyframe -> {
                     jsonObject = (JsonObject) context.serialize(cameraShakeKeyframe);
                     jsonObject.addProperty("type", "camera_shake");
+                }
+                case BlockOverrideKeyframe blockOverrideKeyframe -> {
+                    jsonObject = (JsonObject) context.serialize(blockOverrideKeyframe);
+                    jsonObject.addProperty("type", "block_override");
                 }
                 case SkinKeyframe skinKeyframe -> {
                     jsonObject = (JsonObject) context.serialize(skinKeyframe);

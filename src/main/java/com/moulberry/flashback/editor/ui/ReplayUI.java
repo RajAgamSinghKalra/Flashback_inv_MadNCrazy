@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.blaze3d.platform.Window;
 import com.moulberry.flashback.Flashback;
+import com.moulberry.flashback.configuration.FlashbackConfig;
 import com.moulberry.flashback.editor.ui.windows.ExportDoneWindow;
 import com.moulberry.flashback.editor.ui.windows.ExportQueueWindow;
 import com.moulberry.flashback.editor.ui.windows.ExportScreenshotWindow;
@@ -49,6 +50,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
@@ -101,6 +103,9 @@ public class ReplayUI {
 
     private static UUID selectedEntity = null;
     private static boolean openSelectedEntityPopup = false;
+
+    private static int displayingTip = -1;
+    private static boolean dontShowTipsOnStartupCheckbox = false;
 
     public static void init() {
         if (initialized) {
@@ -268,6 +273,8 @@ public class ReplayUI {
         builder.addChar('\ue92b');
         builder.addChar('\ueb3b');
         builder.addChar('\ue14a');
+        builder.addChar('\ue55f');
+        builder.addChar('\uea44');
         return builder.buildRanges();
     }
 
@@ -452,7 +459,7 @@ public class ReplayUI {
 
         // Recalculate the size of the gameplay window
         Window window = Minecraft.getInstance().getWindow();
-        if (window.getWidth() > 0 && window.getWidth() <= 32768 && window.getHeight() > 0 && window.getHeight() <= 32768) {
+        if (window.getWidth() > 0 && window.getWidth() <= 16384 && window.getHeight() > 0 && window.getHeight() <= 16384) {
             Minecraft.getInstance().resizeDisplay();
         }
         imguiGlfw.ungrab();
@@ -711,9 +718,82 @@ public class ReplayUI {
                 }
             }
 
+            if (displayingTip == -1) {
+                FlashbackConfig config = Flashback.getConfig();
+                if (!config.showTipOfTheDay) {
+                    displayingTip = 0;
+                } else {
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime >= config.nextTipOfTheDay - TimeUnit.DAYS.toMillis(2) && currentTime <= config.nextTipOfTheDay) {
+                        displayingTip = 0;
+                    } else {
+                        displayingTip = Integer.numberOfTrailingZeros(~config.viewedTipsOfTheDay) + 1;
+                        config.viewedTipsOfTheDay |= 1 << (displayingTip - 1);
+                        config.nextTipOfTheDay = currentTime + TimeUnit.DAYS.toMillis(1);
+                        config.delayedSaveToDefaultFolder();
+                    }
+                }
+            } else if (displayingTip > 0) {
+                int tip = displayingTip - 1;
+                if (tip >= DailyTips.TIPS.length) {
+                    displayingTip = 0;
+                } else {
+                    ImGuiViewport viewport = ImGui.getMainViewport();
+                    ImGui.setNextWindowPos(viewport.getCenterX(), viewport.getCenterY(), ImGuiCond.Appearing, 0.5f, 0.5f);
+                    if (ImGui.begin("Tip of the day", ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.AlwaysAutoResize)) {
+                        float oldPositionY = ImGui.getCursorPosY();
+
+                        ImGui.pushTextWrapPos(scaleUi(375));
+                        ImGui.text(DailyTips.TIPS[tip]);
+                        ImGui.popTextWrapPos();
+
+                        float verticalSize = ImGui.getCursorPosY() - oldPositionY;
+                        int minimumVerticalSize = scaleUi(100);
+                        if (verticalSize < minimumVerticalSize) {
+                            ImGui.setCursorPosY(ImGui.getCursorPosY() + minimumVerticalSize - verticalSize);
+                        }
+
+                        if (ImGui.checkbox("Don't show tips on startup", dontShowTipsOnStartupCheckbox)) {
+                            dontShowTipsOnStartupCheckbox = !dontShowTipsOnStartupCheckbox;
+                        }
+                        ImGui.sameLine();
+                        ImGui.dummy(scaleUi(20), 0);
+                        ImGui.sameLine();
+                        if (ImGui.button("Close")) {
+                            if (dontShowTipsOnStartupCheckbox) {
+                                FlashbackConfig config = Flashback.getConfig();
+                                config.showTipOfTheDay = false;
+                                config.delayedSaveToDefaultFolder();
+                            }
+                            displayingTip = 0;
+                        }
+                        ImGui.sameLine();
+                        boolean canShowPrev = displayingTip > 1;
+                        if (!canShowPrev) ImGui.beginDisabled();
+                        if (ImGui.button("Back") && canShowPrev) {
+                            FlashbackConfig config = Flashback.getConfig();
+                            displayingTip -= 1;
+                            config.viewedTipsOfTheDay |= 1 << (displayingTip - 1);
+                            config.delayedSaveToDefaultFolder();
+                        }
+                        if (!canShowPrev) ImGui.endDisabled();
+                        ImGui.sameLine();
+                        boolean canShowNext = displayingTip < DailyTips.TIPS.length;
+                        if (!canShowNext) ImGui.beginDisabled();
+                        if (ImGui.button("Next") && canShowNext) {
+                            FlashbackConfig config = Flashback.getConfig();
+                            displayingTip += 1;
+                            config.viewedTipsOfTheDay |= 1 << (displayingTip - 1);
+                            config.delayedSaveToDefaultFolder();
+                        }
+                        if (!canShowNext) ImGui.endDisabled();
+                    }
+                    ImGui.end();
+                }
+            }
+
             if (selectedEntity != null) {
                 Entity entity = Minecraft.getInstance().level.getEntities().get(selectedEntity);
-
                 if (entity == null || editorState == null) {
                     selectedEntity = null;
                 } else if (entity instanceof Player && !editorState.replayVisuals.renderPlayers) {

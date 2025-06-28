@@ -2,11 +2,13 @@ package com.moulberry.flashback.editor.ui.windows;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.yggdrasil.ProfileResult;
+import com.mojang.blaze3d.platform.Window;
 import com.moulberry.flashback.FilePlayerSkin;
 import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.Utils;
 import com.moulberry.flashback.combo_options.GlowingOverride;
 import com.moulberry.flashback.editor.ui.ImGuiHelper;
+import com.moulberry.flashback.editor.ui.ReplayUI;
 import com.moulberry.flashback.exporting.AsyncFileDialogs;
 import com.moulberry.flashback.state.EditorState;
 import imgui.ImGui;
@@ -14,18 +16,21 @@ import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImString;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.model.PlayerModel;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.PlayerModelPart;
+import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.Team;
+import org.lwjgl.glfw.GLFW;
 
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +46,7 @@ public class SelectedEntityPopup {
     static {
         changeSkinInput.inputData.allowedChars = "0123456789abcdef-";
     }
+
     private static ImString changeNameInput = ImGuiHelper.createResizableImString("");
 
     public static void open(Entity entity, EditorState editorState) {
@@ -50,7 +56,6 @@ public class SelectedEntityPopup {
         } else {
             changeNameInput.set("");
         }
-        Flashback.lastselectede = entity.getUUID();
 
         GameProfile skinOverride = editorState.skinOverride.get(entity.getUUID());
         if (skinOverride != null) {
@@ -60,12 +65,8 @@ public class SelectedEntityPopup {
         }
     }
 
-
-
-
     public static void render(Entity entity, EditorState editorState) {
         UUID uuid = entity.getUUID();
-
         ImGui.text("Entity: " + uuid);
 
         ImGui.separator();
@@ -78,6 +79,12 @@ public class SelectedEntityPopup {
             Minecraft.getInstance().player.connection.sendUnsignedCommand("spectate " + entity.getUUID());
             ImGui.closeCurrentPopup();
         }
+        ImGui.sameLine();
+        if (ImGui.button("Copy UUID")) {
+            Minecraft.getInstance().keyboardHandler.setClipboard(entity.getUUID().toString());
+            ReplayUI.setInfoOverlay("Copied '" + entity.getUUID() + "'");
+            ImGui.closeCurrentPopup();
+        }
         if (uuid.equals(editorState.audioSourceEntity)) {
             if (ImGui.button("Unset Audio Source")) {
                 editorState.audioSourceEntity = null;
@@ -85,15 +92,6 @@ public class SelectedEntityPopup {
             }
         } else if (ImGui.button("Set Audio Source")) {
             editorState.audioSourceEntity = entity.getUUID();
-            editorState.markDirty();
-        }
-        boolean isHiddenDuringExport = editorState.hideDuringExport.contains(entity.getUUID());
-        if (ImGui.checkbox("Hide During Export", isHiddenDuringExport)) {
-            if (isHiddenDuringExport) {
-                editorState.hideDuringExport.remove(entity.getUUID());
-            } else {
-                editorState.hideDuringExport.add(entity.getUUID());
-            }
             editorState.markDirty();
         }
 
@@ -116,23 +114,23 @@ public class SelectedEntityPopup {
                 }
                 ImGui.endCombo();
             }
-            
-            
+
+
 
             // Add new tracked entity (temporary example)
             if (ImGui.button("Add Player")) {
                 // Example: Add a placeholder tracked entity
 
 
-                    // Assuming Java
-                    Map<String, Object> newModelDict = new HashMap<String, Object>(); // Create a new dictionary
-                    if (comboOptions[currentComboSelection].toString() == "Eyes" || comboOptions[currentComboSelection].toString() == "BlockPosition") {
-                        newModelDict.put(entity.getUUID().toString() + "/" +  comboOptions[currentComboSelection].toString(), comboOptions[currentComboSelection].toString()); //  May need to cast entity to ModelPart if it's not already.
-                        Flashback.trackedmodels.add(newModelDict);
-                    } else {
-                        newModelDict.put(entity.getUUID().toString() + "/" + comboOptions[currentComboSelection].toString(),  comboOptions[currentComboSelection].toString());
-                        Flashback.trackedmodels.add(newModelDict);
-                    }
+                // Assuming Java
+                Map<String, Object> newModelDict = new HashMap<String, Object>(); // Create a new dictionary
+                if (comboOptions[currentComboSelection].toString() == "Eyes" || comboOptions[currentComboSelection].toString() == "BlockPosition") {
+                    newModelDict.put(entity.getUUID().toString() + "/" +  comboOptions[currentComboSelection].toString(), comboOptions[currentComboSelection].toString()); //  May need to cast entity to ModelPart if it's not already.
+                    Flashback.trackedmodels.add(newModelDict);
+                } else {
+                    newModelDict.put(entity.getUUID().toString() + "/" + comboOptions[currentComboSelection].toString(),  comboOptions[currentComboSelection].toString());
+                    Flashback.trackedmodels.add(newModelDict);
+                }
 
 
             }
@@ -162,11 +160,28 @@ public class SelectedEntityPopup {
             ImGui.end();
         }
 
-        
-
+        boolean isHiddenDuringExport = editorState.hideDuringExport.contains(entity.getUUID());
+        if (ImGui.checkbox("Hide During Export", isHiddenDuringExport)) {
+            if (isHiddenDuringExport) {
+                editorState.hideDuringExport.remove(entity.getUUID());
+            } else {
+                editorState.hideDuringExport.add(entity.getUUID());
+            }
+            editorState.markDirty();
+        }
 
         if (!isHiddenDuringExport) {
-            if (entity instanceof Player player) {
+            if (entity instanceof AbstractClientPlayer player) {
+                if (editorState.hideCape.contains(player.getUUID())) {
+                    if (ImGui.checkbox("Hide Cape", true)) {
+                        editorState.hideCape.remove(player.getUUID());
+                    }
+                } else if (player.isModelPartShown(PlayerModelPart.CAPE) && player.getSkin().capeTexture() != null) {
+                    if (ImGui.checkbox("Hide Cape", false)) {
+                        editorState.hideCape.add(player.getUUID());
+                    }
+                }
+
                 boolean hideNametag = editorState.hideNametags.contains(entity.getUUID());
                 if (ImGui.checkbox("Render Nametag", !hideNametag)) {
                     if (hideNametag) {
@@ -210,6 +225,20 @@ public class SelectedEntityPopup {
                         if (team != null && !Utils.isComponentEmpty(team.getPlayerSuffix())) {
                             if (ImGui.checkbox("Hide Team Suffix", false)) {
                                 editorState.hideTeamSuffix.add(player.getUUID());
+                            }
+                        }
+                    }
+
+                    if (editorState.hideBelowName.contains(player.getUUID())) {
+                        if (ImGui.checkbox("Hide Text Below Name", true)) {
+                            editorState.hideBelowName.remove(player.getUUID());
+                        }
+                    } else {
+                        Scoreboard scoreboard = player.getScoreboard();
+                        Objective objective = scoreboard.getDisplayObjective(DisplaySlot.BELOW_NAME);
+                        if (objective != null) {
+                            if (ImGui.checkbox("Hide Text Below Name", false)) {
+                                editorState.hideBelowName.add(player.getUUID());
                             }
                         }
                     }

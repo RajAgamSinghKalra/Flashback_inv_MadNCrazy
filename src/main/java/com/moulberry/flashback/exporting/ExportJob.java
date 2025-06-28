@@ -22,6 +22,7 @@ import com.moulberry.flashback.keyframe.handler.MinecraftKeyframeHandler;
 import com.moulberry.flashback.keyframe.handler.TickrateKeyframeCapture;
 import com.moulberry.flashback.state.EditorState;
 import com.moulberry.flashback.playback.ReplayServer;
+import com.moulberry.flashback.visuals.AccurateEntityPositionHandler;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Camera;
@@ -37,15 +38,12 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.bytedeco.ffmpeg.global.avutil;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.openal.SOFTLoopback;
 
@@ -61,13 +59,9 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
-import static net.minecraft.commands.arguments.EntityArgument.getEntity;
-
 public class ExportJob {
 
     private final ExportSettings settings;
-
-    private Path temppath;
     private boolean running = false;
     private boolean shouldChangeFramebufferSize = false;
     private long lastRenderMillis;
@@ -84,6 +78,8 @@ public class ExportJob {
     private long encodeTimeNanos = 0;
     private long downloadTimeNanos = 0;
     private boolean patreonLinkClicked = false;
+
+    private int extraDummyFrames = 0;
 
     public int progressCount = 0;
     public int progressOutOf = 0;
@@ -149,10 +145,11 @@ public class ExportJob {
         String tempFileName = "replay_export_temp/" + uuid + "." + this.settings.container().extension();
         Path exportTempFile = Path.of(tempFileName);
         Path exportTempFolder = exportTempFile.getParent();
-        temppath = exportTempFolder;
         TextureTarget infoRenderTarget = null;
 
         int oldGuiScale = Minecraft.getInstance().options.guiScale().get();
+
+        this.extraDummyFrames = Flashback.getConfig().exportRenderDummyFrames[0];
 
         try {
             Files.createDirectories(exportTempFolder);
@@ -162,7 +159,7 @@ public class ExportJob {
 
             try (VideoWriter encoder = createVideoWriter(this.settings, tempFileName);
                  SaveableFramebufferQueue downloader = new SaveableFramebufferQueue(this.settings.resolutionX(), this.settings.resolutionY())) {
-                doExport(encoder, downloader, infoRenderTarget, Path.of(this.settings.output().toAbsolutePath().toString().substring(0, this.settings.output().toAbsolutePath().toString().indexOf('.'))), "CJ.json");
+                doExport(encoder, downloader, infoRenderTarget,Path.of(this.settings.output().toAbsolutePath().toString().substring(0, this.settings.output().toAbsolutePath().toString().indexOf('.'))), "CJ.json");
             }
 
             if (this.settings.container() != VideoContainer.PNG_SEQUENCE) {
@@ -191,8 +188,7 @@ public class ExportJob {
 
             try {
                 Files.deleteIfExists(exportTempFile);
-            } catch (IOException ignored) {
-            }
+            } catch (IOException ignored) {}
 
             try {
                 boolean empty;
@@ -202,15 +198,13 @@ public class ExportJob {
                 if (empty) {
                     Files.deleteIfExists(exportTempFolder);
                 }
-            } catch (IOException ignored) {
-            }
+            } catch (IOException ignored) {}
 
             if (infoRenderTarget != null) {
                 infoRenderTarget.destroyBuffers();
             }
         }
     }
-
 
     private static VideoWriter createVideoWriter(ExportSettings settings, String tempFileName) {
         if (settings.container() == VideoContainer.PNG_SEQUENCE) {
@@ -219,7 +213,6 @@ public class ExportJob {
             return new AsyncFFmpegVideoWriter(settings, tempFileName);
         }
     }
-
 
     private static ModelPart getNamedModelPart(net.minecraft.client.model.EntityModel<?> model, String partName) {
         Class<?> currentClass = model.getClass();
@@ -252,7 +245,6 @@ public class ExportJob {
             return;
         }
 
-
         Random random = new Random(1000);
         Random mathRandom = this.settings.resetRng() ? Utils.getInternalMathRandom() : null;
 
@@ -274,7 +266,6 @@ public class ExportJob {
 
         double lastClientTickDouble = 0;
 
-
         List<Map<String, Object>> allCameraKeyframes = new ArrayList<>();
         List<Map<String, Object>> trackedData = new ArrayList<>();
 
@@ -286,7 +277,7 @@ public class ExportJob {
             this.currentTickDouble = tickInfo.serverTick;
             int targetServerTick = this.settings.startTick() + (int) currentTickDouble;
 
-            float deltaTicksFloat = (float) (tickInfo.clientTick - lastClientTickDouble);
+            float deltaTicksFloat = (float)(tickInfo.clientTick - lastClientTickDouble);
             lastClientTickDouble = tickInfo.clientTick;
             double partialClientTick = tickInfo.clientTick - (int) tickInfo.clientTick;
 
@@ -305,52 +296,7 @@ public class ExportJob {
                 clientTickCount += 1;
             }
 
-            long pauseScreenStart = System.currentTimeMillis();
-            while (Minecraft.getInstance().getOverlay() != null || Minecraft.getInstance().screen != null) {
-                this.runClientTick(frozen);
-
-                Window window = Minecraft.getInstance().getWindow();
-                RenderTarget renderTarget = Minecraft.getInstance().mainRenderTarget;
-                renderTarget.bindWrite(true);
-                RenderSystem.clear(16640, Minecraft.ON_OSX);
-                Minecraft.getInstance().gameRenderer.render(Minecraft.getInstance().timer, true);
-                renderTarget.unbindWrite();
-
-                this.shouldChangeFramebufferSize = false;
-                renderTarget.blitToScreen(window.getWidth(), window.getHeight(), false);
-                window.updateDisplay();
-                this.shouldChangeFramebufferSize = true;
-
-                LockSupport.parkNanos("waiting for pause overlay to disappear", 50_000_000L);
-
-                // Force remove screens/overlays after 5s/15s respectively
-                long currentTime = System.currentTimeMillis();
-                if (pauseScreenStart > currentTime) {
-                    pauseScreenStart = currentTime;
-                }
-                if (currentTime - pauseScreenStart > 5000) {
-                    Minecraft.getInstance().setScreen(null);
-                }
-                if (currentTime - pauseScreenStart > 15000) {
-                    Minecraft.getInstance().setOverlay(null);
-                }
-            }
-
             this.updateClientFreeze(frozen);
-
-            KeyframeHandler keyframeHandler = new MinecraftKeyframeHandler(Minecraft.getInstance());
-            this.settings.editorState().applyKeyframes(keyframeHandler, (float) (this.settings.startTick() + currentTickDouble));
-            
-            SaveableFramebuffer saveable = downloader.take();
-            RenderTarget renderTarget = Minecraft.getInstance().mainRenderTarget;
-
-            renderTarget.bindWrite(true);
-            RenderSystem.clear(16640, Minecraft.ON_OSX);
-
-            // Perform rendering
-            PerfectFrames.waitUntilFrameReady();
-            FogRenderer.setupNoFog();
-            RenderSystem.enableCull();
 
             DeltaTracker.Timer timer = Minecraft.getInstance().timer;
             timer.updateFrozenState(frozen);
@@ -360,28 +306,6 @@ public class ExportJob {
             timer.deltaTickResidual = (float) partialClientTick;
             timer.pausedDeltaTickResidual = (float) partialClientTick;
 
-            start = System.nanoTime();
-            Minecraft.getInstance().gameRenderer.render(timer, true);
-            renderTimeNanos += System.nanoTime() - start;
-
-            renderTarget.unbindWrite();
-
-            boolean cancel;
-
-            // Capture audio if necessary
-            FloatBuffer audioBuffer = null;
-            if (this.settings.recordAudio()) {
-                long device = Minecraft.getInstance().getSoundManager().soundEngine.library.currentDevice;
-
-                audioSamples += 48000 / this.settings.framerate();
-                int renderSamples = (int) audioSamples;
-                audioSamples -= renderSamples;
-
-                int channels = this.settings.stereoAudio() ? 2 : 1;
-
-                audioBuffer = ByteBuffer.allocateDirect(renderSamples * 4 * channels).order(ByteOrder.nativeOrder()).asFloatBuffer();
-                SOFTLoopback.alcRenderSamplesSOFT(device, audioBuffer, renderSamples);
-            }
             if (Flashback.getConfig().cjson) {
                 Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
                 if (camera != null) {
@@ -402,7 +326,6 @@ public class ExportJob {
 
                     allCameraKeyframes.add(keyframeData);
                 }
-
                 if (!Flashback.trackedmodels.isEmpty()) {
 
                     Map<String, Object> keyframeData = new HashMap<>();
@@ -455,9 +378,9 @@ public class ExportJob {
                             entityData = (Map<String, Object>) keyframeData.get(entityName);
                             if (entityData == null) {
 
-                                    entityData = new HashMap<>();
-                                    entityData.put(partName, partData);
-                                    keyframeData.put(entityName, entityData);
+                                entityData = new HashMap<>();
+                                entityData.put(partName, partData);
+                                keyframeData.put(entityName, entityData);
 
                             } else{
                                 entityData.put(partName, partData);
@@ -469,6 +392,95 @@ public class ExportJob {
 
                     trackedData.add(keyframeData);
                 }
+            }
+
+            AccurateEntityPositionHandler.apply(Minecraft.getInstance().level, timer);
+
+            KeyframeHandler keyframeHandler = new MinecraftKeyframeHandler(Minecraft.getInstance());
+            this.settings.editorState().applyKeyframes(keyframeHandler, (float)(this.settings.startTick() + currentTickDouble));
+
+            long pauseScreenStart = System.currentTimeMillis();
+            int additionalDummyFrames = this.extraDummyFrames;
+            while (Minecraft.getInstance().getOverlay() != null || Minecraft.getInstance().screen != null || additionalDummyFrames > 0) {
+                if (Minecraft.getInstance().getOverlay() != null || Minecraft.getInstance().screen != null) {
+                    this.runClientTick(frozen);
+                }
+                if (additionalDummyFrames > 0) {
+                    additionalDummyFrames -= 1;
+                }
+
+                Window window = Minecraft.getInstance().getWindow();
+                RenderTarget renderTarget = Minecraft.getInstance().mainRenderTarget;
+                renderTarget.bindWrite(true);
+                RenderSystem.clear(16640, Minecraft.ON_OSX);
+                Minecraft.getInstance().gameRenderer.render(Minecraft.getInstance().timer, true);
+                renderTarget.unbindWrite();
+
+                this.shouldChangeFramebufferSize = false;
+                renderTarget.blitToScreen(window.getWidth(), window.getHeight());
+                window.updateDisplay();
+                this.shouldChangeFramebufferSize = true;
+
+                if (Minecraft.getInstance().getOverlay() != null || Minecraft.getInstance().screen != null) {
+                    LockSupport.parkNanos("waiting for pause overlay to disappear", 50_000_000L);
+
+                    // Force remove screens/overlays after 5s/15s respectively
+                    long currentTime = System.currentTimeMillis();
+                    if (pauseScreenStart > currentTime) {
+                        pauseScreenStart = currentTime;
+                    }
+                    if (currentTime - pauseScreenStart > 5000) {
+                        Minecraft.getInstance().setScreen(null);
+                    }
+                    if (currentTime - pauseScreenStart > 15000) {
+                        Minecraft.getInstance().setOverlay(null);
+                    }
+                }
+
+                this.updateClientFreeze(frozen);
+
+                timer.updateFrozenState(frozen);
+                timer.updatePauseState(false);
+                timer.deltaTicks = deltaTicksFloat;
+                timer.realtimeDeltaTicks = deltaTicksFloat;
+                timer.deltaTickResidual = (float) partialClientTick;
+                timer.pausedDeltaTickResidual = (float) partialClientTick;
+            }
+
+
+
+            SaveableFramebuffer saveable = downloader.take();
+            RenderTarget renderTarget = Minecraft.getInstance().mainRenderTarget;
+
+            renderTarget.bindWrite(true);
+            RenderSystem.clear(16640, Minecraft.ON_OSX);
+
+            // Perform rendering
+            PerfectFrames.waitUntilFrameReady();
+            FogRenderer.setupNoFog();
+            RenderSystem.enableCull();
+
+            start = System.nanoTime();
+            Minecraft.getInstance().gameRenderer.render(timer, true);
+            renderTimeNanos += System.nanoTime() - start;
+
+            renderTarget.unbindWrite();
+
+            boolean cancel;
+
+            // Capture audio if necessary
+            FloatBuffer audioBuffer = null;
+            if (this.settings.recordAudio()) {
+                long device = Minecraft.getInstance().getSoundManager().soundEngine.library.currentDevice;
+
+                audioSamples += 48000 / this.settings.framerate();
+                int renderSamples = (int) audioSamples;
+                audioSamples -= renderSamples;
+
+                int channels = this.settings.stereoAudio() ? 2 : 1;
+
+                audioBuffer = ByteBuffer.allocateDirect(renderSamples * 4 * channels).order(ByteOrder.nativeOrder()).asFloatBuffer();
+                SOFTLoopback.alcRenderSamplesSOFT(device, audioBuffer, renderSamples);
             }
 
             this.shouldChangeFramebufferSize = false;
@@ -545,6 +557,8 @@ public class ExportJob {
     private void setup(ReplayServer replayServer) {
         Minecraft minecraft = Minecraft.getInstance();
 
+        replayServer.setDesiredTickRate(20.0f, true);
+
         if (replayServer.getReplayTick() != this.settings.startTick()) {
             int currentTick = Math.max(0, this.settings.startTick() - 40);
 
@@ -608,8 +622,7 @@ public class ExportJob {
 
         Minecraft minecraft = Minecraft.getInstance();
 
-        while (minecraft.pollTask()) {
-        }
+        while (minecraft.pollTask()) {}
         this.updateClientFreeze(frozen);
         minecraft.tick();
         this.updateSoundSource(minecraft);
@@ -658,7 +671,7 @@ public class ExportJob {
         boolean cancel = false;
 
         long currentTime = System.currentTimeMillis();
-        if (currentTime - this.lastRenderMillis > 1000 / 60 || currentFrame == totalFrames) {
+        if (currentTime - this.lastRenderMillis > 1000/60 || currentFrame == totalFrames) {
             this.progressCount = currentFrame;
             this.progressOutOf = totalFrames;
 
@@ -716,7 +729,6 @@ public class ExportJob {
                 lines.add("");
             }
 
-
             lines.add("Exported Frames: " + currentFrame + "/" + totalFrames);
 
             long elapsed = currentTime - this.renderStartTime;
@@ -740,9 +752,9 @@ public class ExportJob {
             }
 
             if (showingDebug) {
-                lines.add("ST: " + serverTickTimeNanos / 1000000 + ", CT: " + clientTickTimeNanos / 1000000);
-                lines.add("RT: " + renderTimeNanos / 1000000 + ", ET: " + encodeTimeNanos / 1000000);
-                lines.add("DT: " + downloadTimeNanos / 1000000);
+                lines.add("ST: " + serverTickTimeNanos/1000000 + ", CT: " + clientTickTimeNanos/1000000);
+                lines.add("RT: " + renderTimeNanos/1000000 + ", ET: " + encodeTimeNanos/1000000);
+                lines.add("DT: " + downloadTimeNanos/1000000);
             } else {
                 lines.add("Press [F3] to show debug info");
             }
@@ -769,12 +781,12 @@ public class ExportJob {
             }
 
             int x = scaledWidth / 2;
-            int y = scaledHeight / 2 - font.lineHeight * (lines.size() + 1) / 2;
+            int y = scaledHeight / 2 - font.lineHeight * (lines.size() + 1)/2;
             for (String line : lines) {
                 if (line.isEmpty()) {
                     y += font.lineHeight / 2 + 1;
                 } else {
-                    font.drawInBatch(line, x - font.width(line) / 2f, y,
+                    font.drawInBatch(line, x - font.width(line)/2f, y,
                             -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
                     y += font.lineHeight;
                 }
@@ -787,9 +799,9 @@ public class ExportJob {
 
             String patreon = "https://www.patreon.com/flashbackmod";
             int patreonWidth = font.width(patreon);
-            if (mouseX > x - patreonWidth / 2f && mouseX < x + patreonWidth / 2f && mouseY > y && mouseY < y + font.lineHeight) {
-                font.drawInBatch(Component.literal(patreon).withStyle(ChatFormatting.UNDERLINE), x - patreonWidth / 2f, y,
-                        -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            if (mouseX > x - patreonWidth/2f && mouseX < x + patreonWidth/2f && mouseY > y && mouseY < y + font.lineHeight) {
+                font.drawInBatch(Component.literal(patreon).withStyle(ChatFormatting.UNDERLINE), x - patreonWidth/2f, y,
+                    -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
 
                 if (GLFW.glfwGetMouseButton(window.getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != 0) {
                     if (!this.patreonLinkClicked) {
@@ -800,8 +812,8 @@ public class ExportJob {
                     this.patreonLinkClicked = false;
                 }
             } else {
-                font.drawInBatch(patreon, x - patreonWidth / 2f, y,
-                        -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+                font.drawInBatch(patreon, x - patreonWidth/2f, y,
+                    -1, true, matrix, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
                 this.patreonLinkClicked = false;
             }
 
@@ -833,8 +845,7 @@ public class ExportJob {
         }
     }
 
-    private record TickInfo(double serverTick, double clientTick, boolean frozen) {
-    }
+    private record TickInfo(double serverTick, double clientTick, boolean frozen) {}
 
     private static List<TickInfo> calculateTicks(EditorState editorState, int startTick, int endTick, double fps) {
         List<TickInfo> ticks = new ArrayList<>();

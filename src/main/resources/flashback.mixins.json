@@ -9,6 +9,7 @@
     "MixinLevelRenderer",
     "MixinMinecraft",
     "MixinMouseHandler",
+    "MixinPlayerInfo",
     "MixinRenderTarget",
     "MixinWindow",
     "audio.MixinAudioLibrary",
@@ -22,6 +23,7 @@
     "playback.MixinArmorStandRenderer",
     "playback.MixinCamera",
     "playback.MixinClientCommonPacketListenerImpl",
+    "playback.MixinClientPacketListener",
     "playback.MixinGameRenderer",
     "playback.MixinItemInHandRenderer",
     "playback.MixinRemotePlayer",
@@ -32,6 +34,7 @@
     "ui.MixinPauseScreen",
     "ui.MixinTitleScreen",
     "visuals.MixinBossHealthOverlay",
+    "visuals.MixinCapeLayer",
     "visuals.MixinClientLevel",
     "visuals.MixinClientLevelData",
     "visuals.MixinEntityRenderDispatcher",
@@ -45,7 +48,8 @@
     "visuals.MixinMouseHandler",
     "visuals.MixinOptions",
     "visuals.MixinParticleEngine",
-    "visuals.MixinPlayer"
+    "visuals.MixinPlayer",
+    "visuals.MixinPlayerRenderer"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -68,8 +72,8 @@
     "compat.voice_chat.MixinVoiceChatClientVoicechat",
     "compat.voice_chat.MixinVoiceChatRenderEvents",
     "compat.voice_chat.MixinVoiceChatSoundManager",
-    "playback.MixinAbstractMinecart",
     "millis.MixinWorldBorderMovingBorderExtent",
+    "playback.MixinAbstractMinecart",
     "playback.MixinAttributeInstance",
     "playback.MixinBoat",
     "playback.MixinChunkHolder",
@@ -78,6 +82,7 @@
     "playback.MixinLivingEntity",
     "playback.MixinPlayerChunkSender",
     "playback.MixinScoreboard",
+    "playback.MixinServerTickRateManager",
     "playback.MixinTickRateManager",
     "record.MixinConnection",
     "record.MixinFFmpegFrameRecorder",
