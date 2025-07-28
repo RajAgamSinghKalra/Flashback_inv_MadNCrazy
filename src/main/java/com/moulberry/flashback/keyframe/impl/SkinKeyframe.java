@@ -41,7 +41,7 @@ public class SkinKeyframe extends Keyframe {
 
     // Constructor for deserialization
     public SkinKeyframe(UUID entityUuid, String skinIdentifier, boolean isUuidSkin) {
-        this(entityUuid, skinIdentifier, isUuidSkin, InterpolationType.getDefault()); // Default to STEP interpolation for skin changes
+        this(entityUuid, skinIdentifier, isUuidSkin, InterpolationType.HOLD); // Default to STEP interpolation for skin changes
     }
 
     public SkinKeyframe(UUID entityUuid, String skinIdentifier, boolean isUuidSkin, InterpolationType interpolationType) {
@@ -75,6 +75,8 @@ public class SkinKeyframe extends Keyframe {
     @Override
     public void renderEditKeyframe(Consumer<Consumer<Keyframe>> update) {
         // UI for entity UUID
+
+
         ImGui.text("Target Entity UUID:");
         if (ImGui.inputText("##EntityUUID", entityUuidImString)) {
             try {
@@ -102,8 +104,10 @@ public class SkinKeyframe extends Keyframe {
             future.thenAccept(pathStr -> {
                 if (pathStr != null) {
                     Flashback.getReplayServer().getEditorState().skinOverride.remove(this.entityUuid);
+                    this.skinIdentifier = pathStr;
                     Flashback.getReplayServer().getEditorState().skinOverrideFromFile.put(this.entityUuid, new FilePlayerSkin(pathStr));
                     update.accept(k -> ((SkinKeyframe)k).skinIdentifier = pathStr);
+
                 }
             });
         }

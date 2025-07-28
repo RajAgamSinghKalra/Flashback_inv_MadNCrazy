@@ -63,6 +63,11 @@ dependencies {
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
 	include(implementation("com.moulberry:mixinconstraints:1.0.8"))
+	modImplementation "com.fasterxml.jackson.core:jackson-core:2.17.1" // Use the latest stable version
+	// Add Jackson Databind
+	modImplementation "com.fasterxml.jackson.core:jackson-databind:2.17.1" // Use the latest stable version
+	// Add Jackson Annotations (often pulled in transitively by databind, but good to include explicitly if needed)
+	modImplementation "com.fasterxml.jackson.core:jackson-annotations:2.17.1" // Use the latest stable version
 
     modCompileOnly("maven.modrinth:distanthorizons:Mt9bDAs6")
     modCompileOnly("maven.modrinth:sodium:RncWhTxD")

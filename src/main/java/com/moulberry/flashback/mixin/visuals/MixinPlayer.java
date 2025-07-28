@@ -35,6 +35,7 @@ public abstract class MixinPlayer extends LivingEntity {
             var skinOverride = editorState.skinOverride.get(this.uuid);
             var skinOverrideFile = editorState.skinOverrideFromFile.get(this.uuid);
             if (skinOverride != null || skinOverrideFile != null) {
+
                 cir.setReturnValue(true);
             }
         }

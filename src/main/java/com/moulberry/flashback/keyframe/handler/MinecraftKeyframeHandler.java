@@ -17,7 +17,7 @@ public record MinecraftKeyframeHandler(Minecraft minecraft) implements KeyframeH
 
     private static final Set<Class<? extends KeyframeChange>> supportedChanges = Set.of(
             KeyframeChangeCameraPosition.class, KeyframeChangeCameraPositionOrbit.class, KeyframeChangeTrackEntity.class,
-            KeyframeChangeFov.class, KeyframeChangeTimeOfDay.class, KeyframeChangeCameraShake.class
+            KeyframeChangeFov.class, KeyframeChangeTimeOfDay.class, KeyframeChangeCameraShake.class,KeyframeChangePlayerSkin.class
     );
 
     @Override
@@ -42,29 +42,28 @@ public record MinecraftKeyframeHandler(Minecraft minecraft) implements KeyframeH
 
 
 
-            // Reset any existing skin override for this entity first
-            editorState.skinOverride.remove(entityid);
-            editorState.skinOverrideFromFile.remove(entityid);
+        // Reset any existing skin override for this entity first
+        editorState.skinOverride.remove(entityid);
+        editorState.skinOverrideFromFile.remove(entityid);
 
 
-            if (isUuidSkin) {
+        if (isUuidSkin) {
 
-                try {
-                    UUID skinUuid = UUID.fromString(skinIdentifier);
-                    CompletableFuture.supplyAsync(() -> Minecraft.getInstance().getMinecraftSessionService().fetchProfile(skinUuid, true))
-                            .thenAccept(profileResult -> {
-                                if (profileResult != null) {
-                                    editorState.skinOverride.put(entityid, profileResult.profile());
-                                }
-                            });
-                } catch (IllegalArgumentException e) {
-                    System.err.println("Flashback: Invalid UUID for skin keyframe: " + skinIdentifier);
-                }
-            } else {
-                // Assume skinIdentifier is a file path
+            try {
+                UUID skinUuid = UUID.fromString(skinIdentifier);
+                CompletableFuture.supplyAsync(() -> Minecraft.getInstance().getMinecraftSessionService().fetchProfile(skinUuid, true))
+                        .thenAccept(profileResult -> {
+                            if (profileResult != null) {
+                                editorState.skinOverride.put(entityid, profileResult.profile());
+                            }
+                        });
+            } catch (IllegalArgumentException e) {
+                System.err.println("Flashback: Invalid UUID for skin keyframe: " + skinIdentifier);
+            }
+        } else {
 
-                editorState.skinOverrideFromFile.put(entityid, new FilePlayerSkin(skinIdentifier));
-            }}
+            editorState.skinOverrideFromFile.put(entityid, new FilePlayerSkin(skinIdentifier));
+        }}
     }
 
     @Override

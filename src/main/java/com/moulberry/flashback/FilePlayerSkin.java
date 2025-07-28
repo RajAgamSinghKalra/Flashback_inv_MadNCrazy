@@ -44,6 +44,8 @@ public class FilePlayerSkin {
         }
 
         Path path = Path.of(this.pathToSkin);
+
+
         try (InputStream inputStream = Files.newInputStream(path)) {
             NativeImage nativeImage = NativeImage.read(inputStream);
 
