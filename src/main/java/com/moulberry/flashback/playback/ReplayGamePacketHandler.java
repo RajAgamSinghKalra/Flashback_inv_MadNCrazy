@@ -11,6 +11,7 @@ import com.moulberry.flashback.packet.FlashbackRemoteExperience;
 import com.moulberry.flashback.packet.FlashbackRemoteFoodData;
 import com.moulberry.flashback.packet.FlashbackRemoteSelectHotbarSlot;
 import com.moulberry.flashback.packet.FlashbackRemoteSetSlot;
+import com.moulberry.flashback.packet.FlashbackInventoryCursor;
 import io.netty.channel.embedded.EmbeddedChannel;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -1558,6 +1559,13 @@ public class ReplayGamePacketHandler implements ClientGamePacketListener {
 
     @Override
     public void handleCustomPayload(ClientboundCustomPayloadPacket clientboundCustomPayloadPacket) {
+        if (clientboundCustomPayloadPacket.payload() instanceof FlashbackInventoryCursor cursor) {
+            Entity entity = this.level().getEntity(cursor.entityId());
+            if (entity instanceof Player player) {
+                player.containerMenu.setCarried(cursor.itemStack());
+            }
+            this.replayServer.setCursorState(cursor.entityId(), cursor.itemStack(), cursor.cursorX(), cursor.cursorY());
+        }
         forward(clientboundCustomPayloadPacket);
     }
 

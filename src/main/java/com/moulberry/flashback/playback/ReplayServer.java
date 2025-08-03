@@ -25,6 +25,7 @@ import com.moulberry.flashback.packet.FlashbackRemoteFoodData;
 import com.moulberry.flashback.packet.FlashbackRemoteSelectHotbarSlot;
 import com.moulberry.flashback.packet.FlashbackRemoteSetSlot;
 import com.moulberry.flashback.packet.FlashbackSetBorderLerpStartTime;
+import com.moulberry.flashback.packet.FlashbackInventoryCursor;
 import com.moulberry.flashback.state.EditorScene;
 import com.moulberry.flashback.state.EditorState;
 import com.moulberry.flashback.state.EditorStateManager;
@@ -176,6 +177,8 @@ public class ReplayServer extends IntegratedServer {
     private Component tabListHeader = Component.empty();
     private Component tabListFooter = Component.empty();
     private final Map<ResourceKey<Level>, IntSet> needsPositionUpdate = new HashMap<>();
+    private record CursorState(ItemStack stack, float x, float y) {}
+    private final Int2ObjectMap<CursorState> cursorStates = new Int2ObjectOpenHashMap<>();
 
     private Component shutdownReason = null;
     private FileSystem playbackFileSystem = null;
@@ -446,6 +449,18 @@ public class ReplayServer extends IntegratedServer {
 
     public void popRemotePack(UUID uuid) {
         this.remotePacks.remove(uuid);
+    }
+
+    public void setCursorState(int entityId, ItemStack stack, float x, float y) {
+        if (stack.isEmpty()) {
+            this.cursorStates.remove(entityId);
+        } else {
+            this.cursorStates.put(entityId, new CursorState(stack.copy(), x, y));
+        }
+    }
+
+    public CursorState getCursorState(int entityId) {
+        return this.cursorStates.get(entityId);
     }
 
     public void popAllRemotePacks() {
@@ -984,6 +999,10 @@ public class ReplayServer extends IntegratedServer {
                         ItemStack slotItem = inventory.getItem(i);
                         replayViewer.lastFirstPersonInventoryItems[i] = slotItem.copy();
                         ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSetSlot(playerCamera.getId(), i, slotItem.copy()));
+                    }
+                    CursorState cursorState = this.getCursorState(playerCamera.getId());
+                    if (cursorState != null) {
+                        ServerPlayNetworking.send(replayViewer, new FlashbackInventoryCursor(playerCamera.getId(), cursorState.x, cursorState.y, cursorState.stack.copy()));
                     }
                 } else {
                     if (replayViewer.lastFirstPersonExperienceProgress != playerCamera.experienceProgress ||

@@ -28,6 +28,7 @@ import com.moulberry.flashback.packet.FlashbackRemoteExperience;
 import com.moulberry.flashback.packet.FlashbackRemoteFoodData;
 import com.moulberry.flashback.packet.FlashbackRemoteSelectHotbarSlot;
 import com.moulberry.flashback.packet.FlashbackRemoteSetSlot;
+import com.moulberry.flashback.packet.FlashbackInventoryCursor;
 import com.moulberry.flashback.packet.FlashbackSetBorderLerpStartTime;
 import com.moulberry.flashback.packet.FlashbackVoiceChatSound;
 import com.moulberry.flashback.packet.FlashbackInventoryOpen;
@@ -180,6 +181,7 @@ public class Flashback implements ModInitializer, ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(FlashbackRemoteFoodData.TYPE, FlashbackRemoteFoodData.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackRemoteSetSlot.TYPE, FlashbackRemoteSetSlot.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackInventoryOpen.TYPE, FlashbackInventoryOpen.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(FlashbackInventoryCursor.TYPE, FlashbackInventoryCursor.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackVoiceChatSound.TYPE, FlashbackVoiceChatSound.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackAccurateEntityPosition.TYPE, FlashbackAccurateEntityPosition.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackSetBorderLerpStartTime.TYPE, FlashbackSetBorderLerpStartTime.STREAM_CODEC);
@@ -315,6 +317,16 @@ public class Flashback implements ModInitializer, ClientModInitializer {
                 Entity entity = Minecraft.getInstance().level.getEntity(payload.entityId());
                 if (entity instanceof Player player) {
                     player.getInventory().setItem(payload.slot(), payload.itemStack());
+                }
+            }
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(FlashbackInventoryCursor.TYPE, (payload, context) -> {
+            if (Flashback.isInReplay()) {
+                Entity entity = Minecraft.getInstance().level.getEntity(payload.entityId());
+                if (entity instanceof Player player) {
+                    player.containerMenu.setCarried(payload.itemStack());
+                    com.moulberry.flashback.visuals.InventoryOverlay.setCursor(payload.entityId(), payload.cursorX(), payload.cursorY(), payload.itemStack());
                 }
             }
         });
