@@ -30,6 +30,7 @@ import com.moulberry.flashback.packet.FlashbackRemoteSelectHotbarSlot;
 import com.moulberry.flashback.packet.FlashbackRemoteSetSlot;
 import com.moulberry.flashback.packet.FlashbackSetBorderLerpStartTime;
 import com.moulberry.flashback.packet.FlashbackVoiceChatSound;
+import com.moulberry.flashback.packet.FlashbackInventoryOpen;
 import com.moulberry.flashback.playback.EmptyLevelSource;
 import com.moulberry.flashback.playback.ReplayServer;
 import com.moulberry.flashback.record.FlashbackMeta;
@@ -178,6 +179,7 @@ public class Flashback implements ModInitializer, ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(FlashbackRemoteExperience.TYPE, FlashbackRemoteExperience.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackRemoteFoodData.TYPE, FlashbackRemoteFoodData.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackRemoteSetSlot.TYPE, FlashbackRemoteSetSlot.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(FlashbackInventoryOpen.TYPE, FlashbackInventoryOpen.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackVoiceChatSound.TYPE, FlashbackVoiceChatSound.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackAccurateEntityPosition.TYPE, FlashbackAccurateEntityPosition.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(FlashbackSetBorderLerpStartTime.TYPE, FlashbackSetBorderLerpStartTime.STREAM_CODEC);
@@ -314,6 +316,12 @@ public class Flashback implements ModInitializer, ClientModInitializer {
                 if (entity instanceof Player player) {
                     player.getInventory().setItem(payload.slot(), payload.itemStack());
                 }
+            }
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(FlashbackInventoryOpen.TYPE, (payload, context) -> {
+            if (Flashback.isInReplay()) {
+                com.moulberry.flashback.visuals.InventoryOverlay.setOpen(payload.entityId(), payload.open());
             }
         });
 

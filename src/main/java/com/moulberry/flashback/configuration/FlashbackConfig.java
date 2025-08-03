@@ -62,6 +62,10 @@ public class FlashbackConfig {
     @OptionDescription("flashback.option.record_hotbar.description")
     public boolean recordHotbar = false;
 
+    @OptionCaption("flashback.option.record_inventory")
+    @OptionDescription("flashback.option.record_inventory.description")
+    public boolean recordInventory = false;
+
     @OptionCaption("flashback.option.local_player_updates_per_second")
     @OptionDescription("flashback.option.local_player_updates_per_second.description")
     @OptionIntRange(min = 20, max = 120, step = 20)
