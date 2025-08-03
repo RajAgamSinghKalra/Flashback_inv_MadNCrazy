@@ -472,7 +472,9 @@ public class ReplayGamePacketHandler implements ClientGamePacketListener {
 
             for (ReplayPlayer replayViewer : this.replayServer.getReplayViewers()) {
                 if (Objects.equals(replayViewer.lastFirstPersonDataUUID, player.getUUID())) {
-                    replayViewer.lastFirstPersonHotbarItems[slot] = itemStack.copy();
+                    if (slot < replayViewer.lastFirstPersonInventoryItems.length) {
+                        replayViewer.lastFirstPersonInventoryItems[slot] = itemStack.copy();
+                    }
                     ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSetSlot(player.getId(), slot, itemStack.copy()));
                 }
             }

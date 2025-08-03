@@ -979,10 +979,11 @@ public class ReplayServer extends IntegratedServer {
                     replayViewer.lastFirstPersonSelectedSlot = inventory.selected;
                     ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSelectHotbarSlot(playerCamera.getId(), inventory.selected));
 
-                    for (int i = 0; i < 9; i++) {
-                        ItemStack hotbarItem = inventory.getItem(i);
-                        replayViewer.lastFirstPersonHotbarItems[i] = hotbarItem.copy();
-                        ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSetSlot(playerCamera.getId(), i, hotbarItem.copy()));
+                    int size = inventory.getContainerSize();
+                    for (int i = 0; i < size; i++) {
+                        ItemStack slotItem = inventory.getItem(i);
+                        replayViewer.lastFirstPersonInventoryItems[i] = slotItem.copy();
+                        ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSetSlot(playerCamera.getId(), i, slotItem.copy()));
                     }
                 } else {
                     if (replayViewer.lastFirstPersonExperienceProgress != playerCamera.experienceProgress ||
@@ -1007,11 +1008,12 @@ public class ReplayServer extends IntegratedServer {
                         ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSelectHotbarSlot(playerCamera.getId(), inventory.selected));
                     }
 
-                    for (int i = 0; i < 9; i++) {
-                        ItemStack hotbarItem = inventory.getItem(i);
-                        if (!ItemStack.matches(replayViewer.lastFirstPersonHotbarItems[i], hotbarItem)) {
-                            replayViewer.lastFirstPersonHotbarItems[i] = hotbarItem.copy();
-                            ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSetSlot(playerCamera.getId(), i, hotbarItem.copy()));
+                    int size2 = inventory.getContainerSize();
+                    for (int i = 0; i < size2; i++) {
+                        ItemStack slotItem = inventory.getItem(i);
+                        if (!ItemStack.matches(replayViewer.lastFirstPersonInventoryItems[i], slotItem)) {
+                            replayViewer.lastFirstPersonInventoryItems[i] = slotItem.copy();
+                            ServerPlayNetworking.send(replayViewer, new FlashbackRemoteSetSlot(playerCamera.getId(), i, slotItem.copy()));
                         }
                     }
                 }

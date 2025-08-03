@@ -109,6 +109,18 @@ public abstract class MixinGui {
         }
     }
 
+    @Inject(method = "renderHotbarAndDecorations", at = @At("TAIL"))
+    public void renderInventoryOverlay(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (!Flashback.isInReplay()) {
+            return;
+        }
+        EditorState editorState = EditorStateManager.getCurrent();
+        if (editorState == null || !editorState.replayVisuals.showInventory) {
+            return;
+        }
+        com.moulberry.flashback.visuals.InventoryOverlay.render(guiGraphics);
+    }
+
     @WrapOperation(method = "renderHotbarAndDecorations", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;getPlayerMode()Lnet/minecraft/world/level/GameType;"), require = 0)
     public GameType renderHotbarAndDecorations_getPlayerMode(MultiPlayerGameMode instance, Operation<GameType> original) {
         if (Flashback.isInReplay()) {

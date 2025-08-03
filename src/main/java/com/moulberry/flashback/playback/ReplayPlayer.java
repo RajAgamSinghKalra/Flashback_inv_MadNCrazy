@@ -26,7 +26,7 @@ public class ReplayPlayer extends ServerPlayer {
 
     public UUID lastFirstPersonDataUUID = null;
     public int lastFirstPersonSelectedSlot = -1;
-    public ItemStack[] lastFirstPersonHotbarItems = new ItemStack[9];
+    public ItemStack[] lastFirstPersonInventoryItems = new ItemStack[41];
     public float lastFirstPersonExperienceProgress = 0.0f;
     public int lastFirstPersonTotalExperience = 0;
     public int lastFirstPersonExperienceLevel = 0;

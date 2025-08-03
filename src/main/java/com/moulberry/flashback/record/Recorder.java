@@ -13,6 +13,7 @@ import com.moulberry.flashback.io.AsyncReplaySaver;
 import com.moulberry.flashback.io.ReplayWriter;
 import com.moulberry.flashback.mixin.compat.bobby.FakeChunkManagerAccessor;
 import com.moulberry.flashback.packet.FlashbackAccurateEntityPosition;
+import com.moulberry.flashback.packet.FlashbackInventoryOpen;
 import io.netty.buffer.ByteBuf;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
@@ -22,6 +23,7 @@ import net.minecraft.client.gui.components.BossHealthOverlay;
 import net.minecraft.client.gui.components.LerpingBossEvent;
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.gui.screens.ReceivingLevelScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -42,6 +44,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ClientboundResourcePackPopPacket;
 import net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket;
 import net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket;
@@ -120,6 +123,8 @@ public class Recorder {
     private final List<Object> lastPlayerEntityMeta = new ArrayList<>();
     private final Map<EquipmentSlot, ItemStack> lastPlayerEquipment = new EnumMap<>(EquipmentSlot.class);
     private final ItemStack[] lastHotbarItems = new ItemStack[9];
+    private final ItemStack[] lastInventoryItems = new ItemStack[41];
+    private boolean lastInventoryOpen = false;
     private BlockPos lastDestroyPos = null;
     private int lastDestroyProgress = -1;
     private int lastSelectedSlot = -1;
@@ -470,6 +475,8 @@ public class Recorder {
             this.lastFoodLevel = -1;
             this.lastSaturationLevel = -1;
             Arrays.fill(this.lastHotbarItems, null);
+            Arrays.fill(this.lastInventoryItems, null);
+            this.lastInventoryOpen = false;
             return;
         }
 
@@ -547,6 +554,26 @@ public class Recorder {
                     gamePackets.add(new ClientboundContainerSetSlotPacket(-2, 0, i, copied));
 
                 }
+            }
+        }
+
+        if (Flashback.getConfig().recordInventory) {
+            int size = player.getInventory().getContainerSize();
+            for (int i = 9; i < size; i++) {
+                ItemStack stack = player.getInventory().getItem(i);
+                if (this.lastInventoryItems[i] == null) {
+                    this.lastInventoryItems[i] = stack.copy();
+                } else if (!ItemStack.matches(this.lastInventoryItems[i], stack)) {
+                    ItemStack copied = stack.copy();
+                    this.lastInventoryItems[i] = copied;
+                    gamePackets.add(new ClientboundContainerSetSlotPacket(-2, 0, i, copied));
+                }
+            }
+
+            boolean open = Minecraft.getInstance().screen instanceof InventoryScreen;
+            if (open != this.lastInventoryOpen) {
+                this.lastInventoryOpen = open;
+                gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryOpen(player.getId(), open)));
             }
         }
 
@@ -1078,6 +1105,16 @@ public class Recorder {
                 ItemStack hotbarItem = localPlayer.getInventory().getItem(i);
                 gamePackets.add(new ClientboundContainerSetSlotPacket(-2, 0, i, hotbarItem.copy()));
             }
+        }
+
+        if (Flashback.getConfig().recordInventory) {
+            int size = localPlayer.getInventory().getContainerSize();
+            for (int i = 9; i < size; i++) {
+                ItemStack stack = localPlayer.getInventory().getItem(i);
+                gamePackets.add(new ClientboundContainerSetSlotPacket(-2, 0, i, stack.copy()));
+            }
+            boolean open = Minecraft.getInstance().screen instanceof InventoryScreen;
+            gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryOpen(localPlayer.getId(), open)));
         }
 
         // Entity data

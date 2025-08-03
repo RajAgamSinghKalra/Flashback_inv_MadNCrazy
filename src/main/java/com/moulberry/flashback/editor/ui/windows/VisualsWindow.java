@@ -67,6 +67,10 @@ public class VisualsWindow {
                     visuals.showHotbar = !visuals.showHotbar;
                     editorState.markDirty();
                 }
+                if (ImGui.checkbox("Inventory", visuals.showInventory)) {
+                    visuals.showInventory = !visuals.showInventory;
+                    editorState.markDirty();
+                }
             }
 
             ImGuiHelper.separatorWithText("World");

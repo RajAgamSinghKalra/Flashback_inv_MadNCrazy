@@ -13,6 +13,7 @@ public class ReplayVisuals {
     public boolean showScoreboard = false;
     public boolean showActionBar = false;
     public boolean showHotbar = true;
+    public boolean showInventory = true;
 
     public boolean renderBlocks = true;
     public boolean renderEntities = true;
