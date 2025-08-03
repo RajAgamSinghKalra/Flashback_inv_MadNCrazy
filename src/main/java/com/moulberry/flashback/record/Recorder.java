@@ -14,6 +14,7 @@ import com.moulberry.flashback.io.ReplayWriter;
 import com.moulberry.flashback.mixin.compat.bobby.FakeChunkManagerAccessor;
 import com.moulberry.flashback.packet.FlashbackAccurateEntityPosition;
 import com.moulberry.flashback.packet.FlashbackInventoryOpen;
+import com.moulberry.flashback.packet.FlashbackInventoryCursor;
 import io.netty.buffer.ByteBuf;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
@@ -125,6 +126,9 @@ public class Recorder {
     private final ItemStack[] lastHotbarItems = new ItemStack[9];
     private final ItemStack[] lastInventoryItems = new ItemStack[41];
     private boolean lastInventoryOpen = false;
+    private ItemStack lastCursorStack = null;
+    private float lastCursorX = -1.0f;
+    private float lastCursorY = -1.0f;
     private BlockPos lastDestroyPos = null;
     private int lastDestroyProgress = -1;
     private int lastSelectedSlot = -1;
@@ -477,6 +481,9 @@ public class Recorder {
             Arrays.fill(this.lastHotbarItems, null);
             Arrays.fill(this.lastInventoryItems, null);
             this.lastInventoryOpen = false;
+            this.lastCursorStack = null;
+            this.lastCursorX = -1.0f;
+            this.lastCursorY = -1.0f;
             return;
         }
 
@@ -574,6 +581,27 @@ public class Recorder {
             if (open != this.lastInventoryOpen) {
                 this.lastInventoryOpen = open;
                 gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryOpen(player.getId(), open)));
+            }
+
+            if (open) {
+                ItemStack carried = player.containerMenu.getCarried();
+                Minecraft mc = Minecraft.getInstance();
+                float mouseX = (float) (mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getScreenWidth());
+                float mouseY = (float) (mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getScreenHeight());
+
+                boolean changedStack = this.lastCursorStack == null || !ItemStack.matches(this.lastCursorStack, carried);
+                boolean changedPos = carried.isEmpty() ? false : (mouseX != this.lastCursorX || mouseY != this.lastCursorY);
+                if (changedStack || changedPos) {
+                    this.lastCursorStack = carried.copy();
+                    this.lastCursorX = mouseX;
+                    this.lastCursorY = mouseY;
+                    float normX = mouseX / mc.getWindow().getGuiScaledWidth();
+                    float normY = mouseY / mc.getWindow().getGuiScaledHeight();
+                    gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryCursor(player.getId(), normX, normY, carried.copy())));
+                }
+            } else if (this.lastCursorStack != null) {
+                this.lastCursorStack = null;
+                gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryCursor(player.getId(), 0.0f, 0.0f, ItemStack.EMPTY)));
             }
         }
 
@@ -1115,6 +1143,13 @@ public class Recorder {
             }
             boolean open = Minecraft.getInstance().screen instanceof InventoryScreen;
             gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryOpen(localPlayer.getId(), open)));
+            ItemStack carried = localPlayer.containerMenu.getCarried();
+            Minecraft mc = Minecraft.getInstance();
+            float mouseX = (float)(mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getScreenWidth());
+            float mouseY = (float)(mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getScreenHeight());
+            float normX = mouseX / mc.getWindow().getGuiScaledWidth();
+            float normY = mouseY / mc.getWindow().getGuiScaledHeight();
+            gamePackets.add(new ClientboundCustomPayloadPacket(new FlashbackInventoryCursor(localPlayer.getId(), normX, normY, carried.copy())));
         }
 
         // Entity data
